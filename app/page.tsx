@@ -19,13 +19,9 @@ import {
 import { useState } from "react"
 import { CartIcon } from "@/components/cart-icon"
 import { MenuItemCard } from "@/components/menu-item-card"
-import { useGSAP } from "@/hooks/use-gsap"
 
 export default function TeaRoomLanding() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
-
-  // Initialize GSAP animations
-  useGSAP()
 
   const menuItems = [
     {
@@ -190,34 +186,28 @@ export default function TeaRoomLanding() {
           <Image src="/images/hero-background.jpg" alt="ElBasta Interior" fill className="object-cover" priority />
         </div>
         <div className="relative z-20 text-center text-white max-w-4xl mx-auto px-6">
-          <h1 className="hero-title text-7xl md:text-8xl font-accent mb-6 leading-tight text-shadow-lg">ElBasta</h1>
-          <p className="hero-subtitle text-3xl md:text-4xl font-accent mb-8 text-cream-100">
-            Savourez des Moments Doux
-          </p>
-          <p className="hero-description text-lg mb-12 max-w-2xl mx-auto text-cream-200 font-body leading-relaxed">
+          <h1 className="text-7xl md:text-8xl font-accent mb-6 leading-tight text-shadow-lg">ElBasta</h1>
+          <p className="text-3xl md:text-4xl font-accent mb-8 text-cream-100">Savourez des Moments Doux</p>
+          <p className="text-lg mb-12 max-w-2xl mx-auto text-cream-200 font-body leading-relaxed">
             Découvrez le mélange parfait de tranquillité et de goût avec nos thés soigneusement préparés, jus frais,
             crêpes artisanales et douceurs délicieuses.
           </p>
-          <div className="hero-buttons flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              size="lg"
-              className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 text-lg rounded-full shadow-lg transform hover:scale-105 transition-all duration-300 font-semibold"
-            >
-              Voir le Menu
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-2 border-white text-white hover:bg-white hover:text-amber-900 px-8 py-4 text-lg rounded-full shadow-lg transform hover:scale-105 transition-all duration-300 bg-transparent font-semibold"
-            >
-              Commander Maintenant
-            </Button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="#menu">
+  <Button
+    size="lg"
+    variant="outline"
+    className="border-2 border-white text-white hover:bg-white hover:text-amber-900 px-8 py-4 text-lg rounded-full shadow-lg transform hover:scale-105 transition-all duration-300 bg-transparent font-semibold"
+  >
+    Commander Maintenant
+  </Button>
+</a>
           </div>
         </div>
       </section>
 
       {/* About Section */}
-      <section id="about" className="animate-section py-20 px-6 bg-cream-50">
+      <section id="about" className="py-20 px-6 bg-cream-50">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
@@ -252,7 +242,7 @@ export default function TeaRoomLanding() {
       </section>
 
       {/* Menu Section */}
-      <section id="menu" className="animate-section py-20 px-6 bg-white">
+      <section id="menu" className="py-20 px-6 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-5xl md:text-6xl font-accent text-amber-900 mb-6">Notre Menu</h2>
@@ -284,7 +274,7 @@ export default function TeaRoomLanding() {
       </section>
 
       {/* How It Works Section */}
-      <section className="animate-section py-20 px-6 bg-green-50">
+      <section className="py-20 px-6 bg-green-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-5xl md:text-6xl font-accent text-amber-900 mb-6">Comment Ça Marche</h2>
@@ -294,7 +284,7 @@ export default function TeaRoomLanding() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            <div className="step-card text-center group">
+            <div className="text-center group">
               <div className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-green-700 transition-colors duration-300">
                 <Search className="w-10 h-10 text-white" />
               </div>
@@ -305,7 +295,7 @@ export default function TeaRoomLanding() {
               </p>
             </div>
 
-            <div className="step-card text-center group">
+            <div className="text-center group">
               <div className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-green-700 transition-colors duration-300">
                 <MessageCircle className="w-10 h-10 text-white" />
               </div>
@@ -318,7 +308,7 @@ export default function TeaRoomLanding() {
               </p>
             </div>
 
-            <div className="step-card text-center group">
+            <div className="text-center group">
               <div className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-green-700 transition-colors duration-300">
                 <Truck className="w-10 h-10 text-white" />
               </div>
@@ -333,7 +323,7 @@ export default function TeaRoomLanding() {
       </section>
 
       {/* Gallery Section */}
-      <section id="gallery" className="animate-section py-20 px-6 bg-white">
+      <section id="gallery" className="py-20 px-6 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-5xl md:text-6xl font-accent text-amber-900 mb-6">Galerie</h2>
@@ -372,7 +362,7 @@ export default function TeaRoomLanding() {
             {galleryImages.map((image, index) => (
               <div
                 key={index}
-                className={`gallery-image relative h-24 rounded-lg overflow-hidden cursor-pointer transition-all duration-300 ${
+                className={`relative h-24 rounded-lg overflow-hidden cursor-pointer transition-all duration-300 ${
                   index === currentImageIndex ? "ring-4 ring-green-600" : "hover:scale-105"
                 }`}
                 onClick={() => setCurrentImageIndex(index)}
@@ -390,7 +380,7 @@ export default function TeaRoomLanding() {
       </section>
 
       {/* Contact Section */}
-      <section id="contact" className="animate-section py-20 px-6 bg-cream-50">
+      <section id="contact" className="py-20 px-6 bg-cream-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-5xl md:text-6xl font-accent text-amber-900 mb-6">Visitez-Nous</h2>

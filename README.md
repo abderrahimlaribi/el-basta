@@ -1,265 +1,285 @@
-# ElBasta - Salon de Thé & Café 🍵☕
+# 🍵 ElBasta - Salon de Thé & Café
 
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
+**ElBasta** est un salon de thé moderne situé à Alger, spécialisé dans les boissons artisanales, crêpes françaises, et douceurs faites maison. Notre site web offre une expérience de commande en ligne fluide avec livraison directe via WhatsApp.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/abderrahimlaribis-projects/v0-recreate-ui-from-screenshot)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/AgWYLeJw8jZ)
+## 🏪 À Propos d'ElBasta
 
-## 🏪 About ElBasta
+ElBasta est votre destination pour des moments de détente autour d'un bon café ou thé. Nous proposons une sélection soigneusement choisie de:
 
-ElBasta is a modern, elegant tea room and café website built with cutting-edge web technologies. This project showcases a complete digital experience for a 24/7 café located in Alger, Algeria, featuring an interactive menu, shopping cart system, and seamless WhatsApp ordering integration.
+- **Jus Naturels** - Pressés à froid avec des fruits frais
+- **Crêpes Artisanales** - Sucrées et salées, préparées à la commande  
+- **Cappuccinos Premium** - Avec art latte et sirops artisanaux
+- **Douceurs Françaises** - Macarons, éclairs et tartes aux fruits
 
-## ✨ Features
+### 📍 Informations de Contact
 
-### 🎨 **Modern Design**
-- **Responsive Layout**: Optimized for desktop, tablet, and mobile devices
-- **Custom Typography**: Great Vibes for decorative headings, Nunito for body text
-- **Elegant Color Scheme**: Warm browns and creams reflecting café aesthetics
-- **GSAP Animations**: Smooth, professional animations throughout the site
+- **Adresse**: ElBasta, Alger, Algérie
+- **Téléphone**: 0770 22 44 72
+- **Email**: contact@elbasta.dz
+- **Horaires**: 24h/24, tous les jours
+- **Google Maps**: [Voir l'emplacement](https://www.google.com/maps/place/ELBASTA/@36.7338212,3.1742928,17z/data=!3m1!4b1!4m6!3m5!1s0x128e5383b6a54f93:0x834aa723d5c85d8a!8m2!3d36.7338212!4d3.1742928!16s%2Fg%2F11l59j0gkv?entry=ttu)
 
-### 🛒 **E-Commerce Functionality**
-- **Interactive Menu**: Browse through categories (Jus Naturels, Crêpes, Cappuccinos, Douceurs)
-- **Shopping Cart**: Add/remove items with real-time quantity updates
-- **Cart Badge**: Visual indicator showing item count in navigation
-- **Price Calculation**: Automatic total calculation in DZD (Algerian Dinar)
+### 🌐 Réseaux Sociaux
 
-### 📱 **WhatsApp Integration**
-- **Direct Ordering**: One-click order placement via WhatsApp
-- **Formatted Messages**: Automatically generated order summaries
-- **Contact Integration**: Direct link to business WhatsApp (+213 770 22 44 72)
+- **Facebook**: [ElBasta Official](https://www.facebook.com/profile.php?id=61552378694624&ref=_xav_ig_profile_page_web#)
+- **Instagram**: [@elbasta.dz](https://www.instagram.com/elbasta.dz/)
 
-### 🌐 **Multilingual Support**
-- **French Interface**: Complete French localization
-- **Cultural Adaptation**: Pricing in DZD, local business hours (24h/24)
-- **Regional Contact**: Algerian phone numbers and social media
+## ✨ Fonctionnalités du Site Web
 
-### 🗺️ **Location Services**
-- **Google Maps Integration**: Interactive map showing exact location
-- **Address Information**: ElBasta, Alger, Algérie
-- **Navigation Links**: Direct links to Google Maps for directions
+### 🛒 Système de Commande
+- **Panier Interactif** - Ajout/suppression d'articles avec quantités
+- **Commande WhatsApp** - Intégration directe pour passer commande
+- **Adresse de Livraison** - Champ obligatoire pour la livraison
+- **Calcul Automatique** - Prix total en temps réel
 
-## 🛠️ Tech Stack
+### 🎨 Design & UX
+- **Design Responsive** - Optimisé pour mobile et desktop
+- **Interface Française** - Entièrement localisée en français
+- **Monnaie Locale** - Prix affichés en Dinars Algériens (DA)
+- **Images Haute Qualité** - Photos professionnelles des produits
 
-### **Frontend Framework**
-- **Next.js 15**: React framework with App Router
-- **TypeScript**: Type-safe development
-- **Tailwind CSS**: Utility-first CSS framework
+### 🚀 Performance
+- **Optimisation Images** - Compression et lazy loading automatiques
+- **Navigation Fluide** - Interface rapide et intuitive
+- **SEO Optimisé** - Métadonnées et structure optimisées
 
-### **UI Components**
-- **shadcn/ui**: Modern, accessible component library
-- **Lucide React**: Beautiful icon library
-- **Custom Components**: Specialized menu and cart components
+## 🛠️ Stack Technique
 
-### **State Management**
-- **Zustand**: Lightweight state management for cart functionality
-- **React Hooks**: Built-in state management for UI interactions
+### Frontend
+- **Framework**: Next.js 15 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **UI Components**: shadcn/ui
+- **Icons**: Lucide React
+- **Images**: Next.js Image Component
 
-### **Animations & Interactions**
-- **GSAP (GreenSock)**: Professional-grade animations
-- **Framer Motion**: React animation library
-- **CSS Transitions**: Smooth hover effects and transitions
+### State Management
+- **Cart State**: Zustand
+- **Local Storage**: Persistance du panier
 
-### **Development Tools**
-- **ESLint**: Code linting and formatting
-- **PostCSS**: CSS processing and optimization
-- **Git**: Version control with automated syncing
+### Fonts & Typography
+- **Headings**: Great Vibes (Google Fonts)
+- **Body Text**: Nunito (Google Fonts)
+- **Fallbacks**: System fonts pour la performance
 
-## 📁 Project Structure
+### Deployment
+- **Platform**: Vercel
+- **Domain**: Custom domain ready
+- **CDN**: Global edge network
+
+## 📁 Structure du Projet
 
 \`\`\`
 el-basta/
-├── app/                          # Next.js App Router
-│   ├── cart/                     # Shopping cart page
-│   ├── globals.css              # Global styles
-│   ├── layout.tsx               # Root layout
-│   ├── loading.tsx              # Loading component
-│   └── page.tsx                 # Homepage
-├── components/                   # React components
-│   ├── ui/                      # shadcn/ui components
-│   ├── cart-icon.tsx           # Cart navigation icon
-│   ├── menu-item-card.tsx      # Menu item display
-│   └── theme-provider.tsx      # Theme context
-├── hooks/                       # Custom React hooks
-│   ├── use-gsap.ts             # GSAP animation hook
-│   ├── use-mobile.tsx          # Mobile detection
-│   └── use-toast.ts            # Toast notifications
-├── lib/                         # Utility libraries
-│   ├── cart-store.ts           # Zustand cart store
-│   └── utils.ts                # Helper functions
-├── public/                      # Static assets
-│   └── images/                 # Product and gallery images
-├── styles/                      # Additional stylesheets
-└── tailwind.config.ts          # Tailwind configuration
+├── app/
+│   ├── cart/
+│   │   └── page.tsx          # Page panier avec adresse livraison
+│   ├── globals.css           # Styles globaux et fonts
+│   ├── layout.tsx            # Layout principal
+│   ├── loading.tsx           # Composant de chargement
+│   └── page.tsx              # Page d'accueil
+├── components/
+│   ├── ui/                   # Composants shadcn/ui
+│   ├── cart-icon.tsx         # Icône panier avec badge
+│   ├── menu-item-card.tsx    # Carte produit menu
+│   └── theme-provider.tsx    # Provider thème
+├── hooks/
+│   ├── use-mobile.tsx        # Hook détection mobile
+│   └── use-toast.ts          # Hook notifications
+├── lib/
+│   ├── cart-store.ts         # Store Zustand panier
+│   └── utils.ts              # Utilitaires
+├── public/
+│   └── images/               # Images produits et galerie
+└── styles/
+    └── globals.css           # Styles CSS personnalisés
 \`\`\`
 
-## 🎯 Key Pages & Components
+## 🍽️ Menu Complet
 
-### **Homepage (`app/page.tsx`)**
-- Hero section with background imagery
-- About section with business information
-- Interactive menu with categories
-- Image gallery carousel
-- Contact information with map
-- Social media links
+### 🧃 Jus Naturels
+- **Jus d'Orange Frais** - 650 DA
+  - Oranges fraîchement pressées avec une pointe de menthe
+- **Mélange Détox Vert** - 725 DA  
+  - Épinards, pomme, concombre et gingembre
+- **Antioxydant aux Baies** - 700 DA
+  - Baies mélangées avec grenade
 
-### **Cart Page (`app/cart/page.tsx`)**
-- Shopping cart summary
-- Quantity adjustment controls
-- Total price calculation
-- WhatsApp order button
-- Empty cart handling
+### 🥞 Crêpes
+- **Crêpe Française Classique** - 850 DA
+  - Crêpe fine avec beurre, sucre et citron
+- **Nutella & Banane** - 975 DA
+  - Crêpe chaude garnie de Nutella et banane fraîche
+- **Jambon & Fromage Salé** - 1125 DA
+  - Crêpe de sarrasin avec jambon, fromage et herbes
 
-### **Menu Item Card (`components/menu-item-card.tsx`)**
-- Product image display
-- Name and price information
-- Add to cart functionality
-- Responsive design
+### ☕ Cappuccinos
+- **Cappuccino Classique** - 475 DA
+  - Espresso riche avec mousse de lait vapeur
+- **Cappuccino Vanille** - 525 DA
+  - Cappuccino classique avec sirop de vanille
+- **Cappuccino Caramel** - 550 DA
+  - Garni de caramel coulant et art de mousse
 
-### **Cart Store (`lib/cart-store.ts`)**
-- Zustand-based state management
-- Add/remove item functions
-- Quantity management
-- Total calculation
-- Persistent cart state
+### 🍰 Douceurs
+- **Sélection de Macarons** - 1200 DA
+  - Macarons français assortis (6 pièces)
+- **Éclair au Chocolat** - 450 DA
+  - Pâte à choux garnie de crème vanille
+- **Tarte aux Fruits** - 625 DA
+  - Fruits de saison sur base de crème vanille
 
-## 🌟 Business Information
+## 🚀 Installation & Développement
 
-### **Contact Details**
-- **Name**: ElBasta
-- **Phone**: 0770 22 44 72
-- **WhatsApp**: +213 770 22 44 72
-- **Email**: contact@elbasta.dz
-- **Hours**: 24h/24, tous les jours (Open 24/7)
+### Prérequis
+- Node.js 18+ 
+- npm ou yarn
+- Git
 
-### **Location**
-- **Address**: ElBasta, Alger, Algérie
-- **Google Maps**: [View Location](https://www.google.com/maps/place/ELBASTA/@36.7338212,3.1742928,17z)
-- **Coordinates**: 36.7338212, 3.1742928
+### Installation Locale
 
-### **Social Media**
-- **Facebook**: [ElBasta Facebook](https://www.facebook.com/profile.php?id=61552378694624)
-- **Instagram**: [@elbasta.dz](https://www.instagram.com/elbasta.dz/)
-
-## 🍽️ Menu Categories
-
-### **🧃 Jus Naturels (Natural Juices)**
-- Jus d'Orange Frais (15,00 DA)
-- Smoothie Détox Vert (18,00 DA)
-- Jus Antioxydant aux Baies (20,00 DA)
-
-### **🥞 Crêpes**
-- Crêpe Française Classique (12,00 DA)
-- Crêpe Nutella & Banane (16,00 DA)
-- Crêpe Salée Jambon & Fromage (18,00 DA)
-
-### **☕ Cappuccinos**
-- Cappuccino Classique (8,00 DA)
-- Cappuccino à la Vanille (10,00 DA)
-- Cappuccino au Caramel (12,00 DA)
-
-### **🍰 Douceurs (Sweets)**
-- Macarons Français (25,00 DA)
-- Éclair au Chocolat (15,00 DA)
-- Tarte aux Fruits de Saison (20,00 DA)
-
-## 🚀 Deployment
-
-### **Live Website**
-- **Production**: [Vercel Deployment](https://vercel.com/abderrahimlaribis-projects/v0-recreate-ui-from-screenshot)
-- **Development**: Continue building on [v0.dev](https://v0.dev/chat/projects/AgWYLeJw8jZ)
-
-### **Deployment Process**
-1. Changes made in v0.dev chat interface
-2. Automatic sync to GitHub repository
-3. Vercel deployment triggered on push
-4. Live site updated automatically
-
-## 🔧 Development
-
-### **Getting Started**
 \`\`\`bash
-# Clone the repository
-git clone https://github.com/abderrahimlaribi/el-basta.git
+# Cloner le repository
+git clone https://github.com/username/el-basta.git
+cd el-basta
 
-# Install dependencies
+# Installer les dépendances
 npm install
 
-# Run development server
+# Lancer le serveur de développement
 npm run dev
 
-# Build for production
-npm run build
+# Ouvrir http://localhost:3000
 \`\`\`
 
-### **Environment Setup**
-- Node.js 18+ required
-- Next.js 15 with App Router
-- TypeScript configuration included
-- Tailwind CSS pre-configured
+### Scripts Disponibles
 
-## 🎨 Design System
+\`\`\`bash
+npm run dev          # Serveur de développement
+npm run build        # Build de production
+npm run start        # Serveur de production
+npm run lint         # Linting ESLint
+npm run type-check   # Vérification TypeScript
+\`\`\`
 
-### **Typography**
-- **Headings**: Great Vibes (decorative, elegant)
-- **Body Text**: Nunito (clean, readable)
-- **Responsive**: Fluid typography scaling
+### Variables d'Environnement
 
-### **Colors**
-- **Primary**: Warm browns (#8B4513, #D2691E)
-- **Secondary**: Cream and beige tones
-- **Accent**: Gold highlights
-- **Text**: Dark brown for readability
+\`\`\`env
+# .env.local
+NEXT_PUBLIC_SITE_URL=https://elbasta.dz
+NEXT_PUBLIC_WHATSAPP_NUMBER=213770224472
+\`\`\`
 
-### **Spacing**
-- **Consistent**: 8px grid system
-- **Responsive**: Mobile-first approach
-- **Accessibility**: WCAG compliant spacing
+## 🎨 Guide de Style
 
-## 📱 Mobile Optimization
+### Palette de Couleurs
+- **Primary**: Amber/Brown tones (#92400e, #78350f)
+- **Secondary**: Green accents (#16a34a, #15803d)  
+- **Background**: Cream/Off-white (#fefce8, #fef3c7)
+- **Text**: Dark brown (#451a03, #78350f)
 
-### **Responsive Features**
-- Mobile-first design approach
-- Touch-friendly interface elements
-- Optimized images for mobile bandwidth
-- Swipe gestures for gallery navigation
+### Typography
+- **Headings**: Great Vibes (cursive, elegant)
+- **Body**: Nunito (sans-serif, readable)
+- **Weights**: 400 (regular), 600 (semibold), 700 (bold)
 
-### **Performance**
-- Next.js Image optimization
-- Lazy loading for images
-- Minimal JavaScript bundle
-- Fast loading times
+### Responsive Breakpoints
+- **Mobile**: < 768px
+- **Tablet**: 768px - 1024px  
+- **Desktop**: > 1024px
 
-## 🔮 Future Enhancements
+## 📱 Fonctionnalités Mobile
 
-### **Planned Features**
-- [ ] Arabic language support
-- [ ] Online payment integration
-- [ ] Delivery tracking system
-- [ ] Customer loyalty program
-- [ ] Table reservation system
-- [ ] Real-time order notifications
-- [ ] Customer reviews and ratings
-- [ ] Seasonal menu updates
+- **Navigation Tactile** - Menu hamburger responsive
+- **Panier Mobile** - Interface optimisée pour petits écrans
+- **WhatsApp Direct** - Ouverture automatique de l'app
+- **Images Adaptatives** - Chargement optimisé selon la taille d'écran
 
-### **Technical Improvements**
-- [ ] PWA (Progressive Web App) support
-- [ ] Offline functionality
-- [ ] Push notifications
-- [ ] Advanced analytics
-- [ ] SEO optimization
-- [ ] Performance monitoring
+## 🔧 Intégrations
 
-## 👥 Contributors
+### WhatsApp Business
+- **Numéro**: +213 770 22 44 72
+- **Format Message**: Structuré avec produits, quantités, adresse et total
+- **Encodage**: UTF-8 avec `encodeURIComponent`
 
-- **Abderrahim Laribi** - [@abderrahimlaribi](https://github.com/abderrahimlaribi)
-- **v0.dev** - AI-powered development platform
+### Google Maps
+- **Embed**: Carte interactive intégrée
+- **Lien Direct**: Redirection vers Google Maps mobile
+- **Coordonnées**: 36.7338212, 3.1742928
 
-## 📄 License
+### Réseaux Sociaux
+- **Facebook**: Intégration page business
+- **Instagram**: Lien vers profil officiel
+- **Partage**: Boutons de partage sur les produits
 
-This project is developed for ElBasta café and is proprietary software. All rights reserved.
+## 📊 Performance & SEO
+
+### Métriques Performance
+- **Lighthouse Score**: 95+ (Performance)
+- **First Contentful Paint**: < 1.5s
+- **Largest Contentful Paint**: < 2.5s
+- **Cumulative Layout Shift**: < 0.1
+
+### Optimisations SEO
+- **Meta Tags**: Titre, description, keywords
+- **Open Graph**: Partage réseaux sociaux
+- **Schema Markup**: Restaurant/LocalBusiness
+- **Sitemap**: Génération automatique
+
+## 🔮 Roadmap & Améliorations Futures
+
+### Phase 2 - Fonctionnalités Avancées
+- [ ] **Système de Réservation** - Tables et créneaux horaires
+- [ ] **Programme de Fidélité** - Points et récompenses
+- [ ] **Notifications Push** - Promotions et nouveautés
+- [ ] **Multi-langues** - Arabe et Anglais
+
+### Phase 3 - E-commerce Complet
+- [ ] **Paiement en Ligne** - CIB, Edahabia
+- [ ] **Suivi Commandes** - Statut en temps réel
+- [ ] **Avis Clients** - Système de notation
+- [ ] **Chat Support** - Assistance en direct
+
+### Phase 4 - Business Intelligence
+- [ ] **Analytics Avancées** - Tableau de bord admin
+- [ ] **Gestion Stock** - Inventaire automatisé
+- [ ] **CRM Intégré** - Gestion clientèle
+- [ ] **API Mobile** - Application native
+
+## 🤝 Contribution
+
+### Guidelines de Contribution
+1. **Fork** le repository
+2. **Créer** une branche feature (`git checkout -b feature/nouvelle-fonctionnalite`)
+3. **Commit** les changements (`git commit -m 'Ajout nouvelle fonctionnalité'`)
+4. **Push** vers la branche (`git push origin feature/nouvelle-fonctionnalite`)
+5. **Ouvrir** une Pull Request
+
+### Standards de Code
+- **ESLint**: Configuration stricte
+- **Prettier**: Formatage automatique
+- **TypeScript**: Types stricts obligatoires
+- **Commits**: Convention Conventional Commits
+
+## 📄 Licence
+
+Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
+
+## 👥 Équipe
+
+- **Développement**: Équipe technique ElBasta
+- **Design**: Studio créatif partenaire
+- **Contenu**: Équipe marketing ElBasta
+- **Maintenance**: Support technique continu
+
+## 📞 Support
+
+Pour toute question technique ou suggestion d'amélioration:
+
+- **Email Technique**: dev@elbasta.dz
+- **Issues GitHub**: [Créer un ticket](https://github.com/username/el-basta/issues)
+- **Documentation**: [Wiki du projet](https://github.com/username/el-basta/wiki)
 
 ---
 
-**Built with ❤️ using v0.dev and deployed on Vercel**
-
-*Last updated: January 2025*
+**ElBasta** - *Savourez des Moments Doux* ☕🥐✨

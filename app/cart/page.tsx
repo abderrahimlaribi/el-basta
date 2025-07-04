@@ -5,6 +5,8 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { useCartStore } from "@/lib/cart-store"
 import { ArrowLeft, Minus, Plus, Trash2, ShoppingBag } from "lucide-react"
 import { useEffect, useState } from "react"
@@ -12,6 +14,7 @@ import { useEffect, useState } from "react"
 export default function CartPage() {
   const { items, updateQuantity, removeItem, clearCart, getTotalPrice } = useCartStore()
   const [mounted, setMounted] = useState(false)
+  const [deliveryAddress, setDeliveryAddress] = useState("")
 
   useEffect(() => {
     setMounted(true)
@@ -36,6 +39,10 @@ export default function CartPage() {
       message += `${item.quantity}x ${item.name}\n`
     })
 
+    if (deliveryAddress.trim()) {
+      message += `\n📍 *Adresse*: ${deliveryAddress.trim()}\n`
+    }
+
     message += `\n💰 *Coût Total: ${formatPrice(getTotalPrice())}*\n\n`
     message += "Merci ! 😊"
 
@@ -43,6 +50,11 @@ export default function CartPage() {
   }
 
   const handleWhatsAppOrder = () => {
+    if (!deliveryAddress.trim()) {
+      alert("Veuillez saisir votre adresse de livraison")
+      return
+    }
+
     const message = generateWhatsAppMessage()
     const encodedMessage = encodeURIComponent(message)
     const whatsappUrl = `https://wa.me/213770224472?text=${encodedMessage}`
@@ -188,6 +200,22 @@ export default function CartPage() {
                     <span className="text-lg font-semibold text-amber-900 font-body">Total</span>
                     <span className="text-2xl font-bold text-green-600 font-body">{formatPrice(getTotalPrice())}</span>
                   </div>
+                </div>
+
+                {/* Delivery Address Field */}
+                <div className="mb-6">
+                  <Label htmlFor="delivery-address" className="text-amber-900 font-body font-semibold">
+                    Adresse de livraison
+                  </Label>
+                  <Input
+                    id="delivery-address"
+                    type="text"
+                    placeholder="Ex: 17 Rue Didouche Mourad, Alger"
+                    value={deliveryAddress}
+                    onChange={(e) => setDeliveryAddress(e.target.value)}
+                    className="mt-2 font-body"
+                    required
+                  />
                 </div>
 
                 <Button
