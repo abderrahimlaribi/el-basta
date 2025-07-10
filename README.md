@@ -415,3 +415,91 @@ Pour toute question technique ou suggestion d'amélioration:
 ---
 
 **ElBasta** - *Savourez des Moments Doux* ☕🥐✨
+
+## 🔐 Authentification Administrateur (Client-only)
+
+L'accès à l'interface d'administration (/admin) est protégé par une page d'authentification client (/admin-auth).
+
+- **Mot de passe admin** : Le mot de passe n'est jamais stocké en clair. Il est comparé côté client à un hash bcrypt stocké dans une variable d'environnement encodée en base64.
+- **Librairie** : [bcryptjs](https://www.npmjs.com/package/bcryptjs) (client-side)
+- **Redirection** : Si le mot de passe est correct, l'utilisateur est redirigé vers `/admin`. Sinon, un message d'accès refusé s'affiche.
+
+### Mise en place du mot de passe admin
+
+1. **Générer un hash bcrypt pour votre mot de passe**
+   ```js
+   const bcrypt = require('bcryptjs');
+   const hash = bcrypt.hashSync('votre_mot_de_passe', 10);
+   console.log(hash); // Copiez ce hash
+   ```
+2. **Encoder le hash en base64**
+   ```js
+   const base64 = Buffer.from(hash).toString('base64');
+   console.log(base64); // Copiez ce résultat
+   ```
+3. **Ajouter la variable d'environnement dans `.env.local`**
+   ```env
+   NEXT_PUBLIC_ADMIN_HASHED_PASSWORD_BASE64=le_hash_base64_ici
+   ```
+4. **Redémarrer le serveur Next.js** pour que la variable soit prise en compte.
+
+> **Note :** Ce système protège contre l'accès accidentel, mais n'est pas invulnérable à l'inspection du code source côté client. Pour une sécurité maximale, implémentez une authentification serveur.
+
+---
+
+## 🔥 Intégration Firebase/Firestore
+
+Le site utilise **Firebase** pour la gestion dynamique des produits (menu) et des commandes.
+
+### Variables d'environnement Firebase
+Ajoutez dans `.env.local` :
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=xxx
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=xxx
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=xxx
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=xxx
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=xxx
+NEXT_PUBLIC_FIREBASE_APP_ID=xxx
+```
+
+### Règles Firestore recommandées (mode développement)
+```
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /products/{document=**} {
+      allow read, write: if true;
+    }
+    match /orders/{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
+```
+> **Attention :** Pour la production, restreindre les accès selon vos besoins !
+
+### Structure de la collection `products`
+Chaque produit doit avoir :
+- `name` (string)
+- `description` (string)
+- `price` (number ou string)
+- `category` (string)
+- `imageUrl` (string, URL Cloudinary ou autre)
+- `createdAt`, `updatedAt` (timestamp)
+
+---
+
+## ☁️ Intégration Cloudinary (Images)
+
+Les images produits sont stockées sur [Cloudinary](https://cloudinary.com/).
+
+### Variables d'environnement Cloudinary
+Ajoutez dans `.env.local` :
+```env
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=xxx
+NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=xxx
+```
+
+- **Upload** : Utilisez l'API Cloudinary côté client/admin pour uploader les images (voir interface admin).
+- **Sécurité** : Utilisez un preset d'upload non signé pour permettre l'upload côté client.
+
+---
