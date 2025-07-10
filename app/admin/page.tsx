@@ -9,8 +9,10 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Package, Clock, CheckCircle, DollarSign } from "lucide-react"
+import { Package, Clock, CheckCircle, DollarSign, RefreshCw, AlertCircle } from "lucide-react"
 import { ensureDate } from "@/lib/firebase"
+import { useToast } from "@/hooks/use-toast"
+import { Toaster } from "@/components/ui/toaster"
 
 interface OrderItem {
   id: string
@@ -45,10 +47,12 @@ export default function AdminPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [analytics, setAnalytics] = useState<Analytics | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [newStatus, setNewStatus] = useState("")
   const [estimatedTime, setEstimatedTime] = useState("")
   const [updating, setUpdating] = useState(false)
+  const { toast } = useToast()
 
   const fetchOrders = async () => {
     try {
@@ -70,6 +74,33 @@ export default function AdminPage() {
     }
   }
 
+  const refreshData = async () => {
+    setRefreshing(true)
+    try {
+      const previousOrderCount = orders.length
+      await Promise.all([fetchOrders(), fetchAnalytics()])
+      
+      // Check if new orders were added
+      if (orders.length > previousOrderCount) {
+        const newOrdersCount = orders.length - previousOrderCount
+        toast({
+          title: "Nouvelle(s) commande(s) reçue(s)!",
+          description: `${newOrdersCount} nouvelle(s) commande(s) ajoutée(s) au tableau de bord.`,
+          variant: "default",
+        })
+      }
+    } catch (error) {
+      console.error("Error refreshing data:", error)
+      toast({
+        title: "Erreur de mise à jour",
+        description: "Impossible de mettre à jour les données. Veuillez réessayer.",
+        variant: "destructive",
+      })
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
@@ -77,6 +108,13 @@ export default function AdminPage() {
       setLoading(false)
     }
     loadData()
+
+    // Set up auto-refresh every 30 seconds
+    const interval = setInterval(() => {
+      refreshData()
+    }, 30000) // 30 seconds
+
+    return () => clearInterval(interval)
   }, [])
 
   const updateOrderStatus = async () => {
@@ -96,14 +134,23 @@ export default function AdminPage() {
       })
 
       if (response.ok) {
-        await fetchOrders()
-        await fetchAnalytics()
+        await refreshData()
         setSelectedOrder(null)
         setNewStatus("")
         setEstimatedTime("")
+        toast({
+          title: "Statut mis à jour",
+          description: `La commande ${selectedOrder?.trackingId} a été mise à jour avec succès.`,
+          variant: "default",
+        })
       }
     } catch (error) {
       console.error("Error updating order:", error)
+      toast({
+        title: "Erreur de mise à jour",
+        description: "Impossible de mettre à jour le statut de la commande. Veuillez réessayer.",
+        variant: "destructive",
+      })
     } finally {
       setUpdating(false)
     }
@@ -153,9 +200,21 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Tableau de Bord Admin</h1>
-          <p className="text-gray-600">Gérez vos commandes et suivez vos performances</p>
+        <div className="mb-8 flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Tableau de Bord Admin</h1>
+            <p className="text-gray-600">Gérez vos commandes et suivez vos performances</p>
+          </div>
+          <Button
+            onClick={refreshData}
+            disabled={refreshing}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Actualisation...' : 'Actualiser'}
+          </Button>
         </div>
 
         {/* Analytics Cards */}
@@ -292,6 +351,7 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       </div>
+      <Toaster />
     </div>
   )
 }
