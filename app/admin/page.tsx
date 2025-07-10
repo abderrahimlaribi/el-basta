@@ -9,10 +9,12 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Package, Clock, CheckCircle, DollarSign, RefreshCw, AlertCircle } from "lucide-react"
+import { Package, Clock, CheckCircle, DollarSign, RefreshCw, AlertCircle, Plus, Edit, Trash2 } from "lucide-react"
 import { ensureDate } from "@/lib/firebase"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
+import { ProductForm } from "@/components/product-form"
+import Image from "next/image"
 
 interface OrderItem {
   id: string
@@ -43,15 +45,31 @@ interface Analytics {
   statusBreakdown: Record<string, number>
 }
 
+interface Product {
+  id: string
+  name: string
+  description: string
+  price: number
+  category: string
+  imageUrl: string
+  createdAt: Date
+  updatedAt: Date
+}
+
 export default function AdminPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [analytics, setAnalytics] = useState<Analytics | null>(null)
+  const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [newStatus, setNewStatus] = useState("")
   const [estimatedTime, setEstimatedTime] = useState("")
   const [updating, setUpdating] = useState(false)
+  const [showProductForm, setShowProductForm] = useState(false)
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [productLoading, setProductLoading] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const { toast } = useToast()
 
   const fetchOrders = async () => {
@@ -74,11 +92,21 @@ export default function AdminPage() {
     }
   }
 
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch("/api/products")
+      const data = await response.json()
+      setProducts(data.products || [])
+    } catch (error) {
+      console.error("Error fetching products:", error)
+    }
+  }
+
   const refreshData = async () => {
     setRefreshing(true)
     try {
       const previousOrderCount = orders.length
-      await Promise.all([fetchOrders(), fetchAnalytics()])
+      await Promise.all([fetchOrders(), fetchAnalytics(), fetchProducts()])
       
       // Check if new orders were added
       if (orders.length > previousOrderCount) {
@@ -102,9 +130,15 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+
     const loadData = async () => {
       setLoading(true)
-      await Promise.all([fetchOrders(), fetchAnalytics()])
+      await Promise.all([fetchOrders(), fetchAnalytics(), fetchProducts()])
       setLoading(false)
     }
     loadData()
@@ -115,7 +149,7 @@ export default function AdminPage() {
     }, 30000) // 30 seconds
 
     return () => clearInterval(interval)
-  }, [])
+  }, [mounted])
 
   const updateOrderStatus = async () => {
     if (!selectedOrder || !newStatus) return
@@ -156,6 +190,106 @@ export default function AdminPage() {
     }
   }
 
+  // Product management functions
+  const handleCreateProduct = async (productData: Omit<Product, "id" | "createdAt" | "updatedAt">) => {
+    setProductLoading(true)
+    try {
+      const response = await fetch("/api/products", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(productData),
+      })
+
+      if (response.ok) {
+        await fetchProducts()
+        setShowProductForm(false)
+        toast({
+          title: "Produit ajouté",
+          description: "Le produit a été ajouté avec succès.",
+          variant: "default",
+        })
+      } else {
+        throw new Error("Failed to create product")
+      }
+    } catch (error) {
+      console.error("Error creating product:", error)
+      toast({
+        title: "Erreur",
+        description: "Impossible d'ajouter le produit. Veuillez réessayer.",
+        variant: "destructive",
+      })
+    } finally {
+      setProductLoading(false)
+    }
+  }
+
+  const handleUpdateProduct = async (productData: Omit<Product, "id" | "createdAt" | "updatedAt">) => {
+    if (!editingProduct) return
+
+    setProductLoading(true)
+    try {
+      const response = await fetch(`/api/products/${editingProduct.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(productData),
+      })
+
+      if (response.ok) {
+        await fetchProducts()
+        setEditingProduct(null)
+        setShowProductForm(false)
+        toast({
+          title: "Produit mis à jour",
+          description: "Le produit a été mis à jour avec succès.",
+          variant: "default",
+        })
+      } else {
+        throw new Error("Failed to update product")
+      }
+    } catch (error) {
+      console.error("Error updating product:", error)
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le produit. Veuillez réessayer.",
+        variant: "destructive",
+      })
+    } finally {
+      setProductLoading(false)
+    }
+  }
+
+  const handleDeleteProduct = async (productId: string) => {
+    if (!confirm("Êtes-vous sûr de vouloir supprimer ce produit ?")) return
+
+    try {
+      const response = await fetch(`/api/products/${productId}`, {
+        method: "DELETE",
+      })
+
+      if (response.ok) {
+        await fetchProducts()
+        toast({
+          title: "Produit supprimé",
+          description: "Le produit a été supprimé avec succès.",
+          variant: "default",
+        })
+      } else {
+        throw new Error("Failed to delete product")
+      }
+    } catch (error) {
+      console.error("Error deleting product:", error)
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le produit. Veuillez réessayer.",
+        variant: "destructive",
+      })
+    }
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "En préparation":
@@ -186,7 +320,7 @@ export default function AdminPage() {
     return `${price.toFixed(0)} DA`
   }
 
-  if (loading) {
+  if (!mounted || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -292,7 +426,7 @@ export default function AdminPage() {
                     <TableCell>{order.items.length} article(s)</TableCell>
                     <TableCell>{formatPrice(order.totalPrice)}</TableCell>
                     <TableCell>
-                      <Badge className={getStatusColor(order.status)}>{order.status}</Badge>
+                      <Badge key={order.id} className={getStatusColor(order.status)}>{order.status}</Badge>
                     </TableCell>
                     <TableCell>
                       <Dialog>
@@ -350,6 +484,111 @@ export default function AdminPage() {
             </Table>
           </CardContent>
         </Card>
+
+        {/* Product Management Section */}
+        <div className="mt-12">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Gestion des Produits</h2>
+              <p className="text-gray-600">Ajoutez, modifiez et supprimez vos produits</p>
+            </div>
+            <Button
+              onClick={() => {
+                setEditingProduct(null)
+                setShowProductForm(true)
+              }}
+              className="flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Ajouter un Produit
+            </Button>
+          </div>
+
+          {/* Products Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {products.map((product) => (
+              <Card key={product.id} className="overflow-hidden">
+                <div className="relative h-48 bg-gray-100">
+                  {product.imageUrl ? (
+                    <Image
+                      src={product.imageUrl}
+                      alt={product.name}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Package className="h-12 w-12 text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                <CardContent className="p-4">
+                  <div className="space-y-2">
+                    <h3 className="font-semibold text-lg truncate">{product.name}</h3>
+                    <p className="text-sm text-gray-600 line-clamp-2">{product.description}</p>
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-green-600">{formatPrice(product.price)}</span>
+                      <Badge key={product.id} variant="secondary">{product.category}</Badge>
+                    </div>
+                    <div className="flex justify-end space-x-2 pt-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setEditingProduct(product)
+                          setShowProductForm(true)
+                        }}
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDeleteProduct(product.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {products.length === 0 && (
+            <Card className="p-8 text-center">
+              <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Aucun produit</h3>
+              <p className="text-gray-600 mb-4">Commencez par ajouter votre premier produit</p>
+              <Button
+                onClick={() => {
+                  setEditingProduct(null)
+                  setShowProductForm(true)
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Ajouter un Produit
+              </Button>
+            </Card>
+          )}
+        </div>
+
+        {/* Product Form Modal */}
+        {showProductForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <ProductForm
+                product={editingProduct || undefined}
+                onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}
+                onCancel={() => {
+                  setShowProductForm(false)
+                  setEditingProduct(null)
+                }}
+                loading={productLoading}
+              />
+            </div>
+          </div>
+        )}
       </div>
       <Toaster />
     </div>

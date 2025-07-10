@@ -16,121 +16,64 @@ import {
   ChevronRight,
   MessageCircle,
   Package,
+  Loader2,
 } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { CartIcon } from "@/components/cart-icon"
 import { MenuItemCard } from "@/components/menu-item-card"
 import Link from "next/link"
+import { getProducts, type Product } from "@/lib/database"
 
 export default function TeaRoomLanding() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const menuItems = [
-    {
-      category: "Jus Naturels",
-      items: [
-        {
-          id: "juice-1",
-          name: "Jus d'Orange Frais",
-          description: "Oranges fraîchement pressées avec une pointe de menthe",
-          price: "650 DA",
-          image: "/images/fresh-orange-juice.jpg",
-        },
-        {
-          id: "juice-2",
-          name: "Mélange Détox Vert",
-          description: "Épinards, pomme, concombre et gingembre",
-          price: "725 DA",
-          image: "/images/green-detox-smoothie.jpg",
-        },
-        {
-          id: "juice-3",
-          name: "Antioxydant aux Baies",
-          description: "Baies mélangées avec grenade",
-          price: "700 DA",
-          image: "/images/berry-antioxidant-juice.jpg",
-        },
-      ],
-    },
-    {
-      category: "Crêpes",
-      items: [
-        {
-          id: "crepe-1",
-          name: "Crêpe Française Classique",
-          description: "Crêpe fine avec beurre, sucre et citron",
-          price: "850 DA",
-          image: "/images/classic-french-crepe.jpg",
-        },
-        {
-          id: "crepe-2",
-          name: "Nutella & Banane",
-          description: "Crêpe chaude garnie de Nutella et banane fraîche",
-          price: "975 DA",
-          image: "/images/nutella-banana-crepe.jpg",
-        },
-        {
-          id: "crepe-3",
-          name: "Jambon & Fromage Salé",
-          description: "Crêpe de sarrasin avec jambon, fromage et herbes",
-          price: "1125 DA",
-          image: "/images/ham-cheese-savory-crepe.jpg",
-        },
-      ],
-    },
-    {
-      category: "Cappuccinos",
-      items: [
-        {
-          id: "cappuccino-1",
-          name: "Cappuccino Classique",
-          description: "Espresso riche avec mousse de lait vapeur",
-          price: "475 DA",
-          image: "/images/classic-cappuccino.jpg",
-        },
-        {
-          id: "cappuccino-2",
-          name: "Cappuccino Vanille",
-          description: "Cappuccino classique avec sirop de vanille",
-          price: "525 DA",
-          image: "/images/vanilla-cappuccino.jpg",
-        },
-        {
-          id: "cappuccino-3",
-          name: "Cappuccino Caramel",
-          description: "Garni de caramel coulant et art de mousse",
-          price: "550 DA",
-          image: "/images/caramel-cappuccino.jpg",
-        },
-      ],
-    },
-    {
-      category: "Douceurs",
-      items: [
-        {
-          id: "sweet-1",
-          name: "Sélection de Macarons",
-          description: "Macarons français assortis (6 pièces)",
-          price: "1200 DA",
-          image: "/images/french-macarons.jpg",
-        },
-        {
-          id: "sweet-2",
-          name: "Éclair au Chocolat",
-          description: "Pâte à choux garnie de crème vanille",
-          price: "450 DA",
-          image: "/images/chocolate-eclair.jpg",
-        },
-        {
-          id: "sweet-3",
-          name: "Tarte aux Fruits",
-          description: "Fruits de saison sur base de crème vanille",
-          price: "625 DA",
-          image: "/images/seasonal-fruit-tart.jpg",
-        },
-      ],
-    },
-  ]
+  // Fetch products on component mount
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const fetchedProducts = await getProducts()
+        setProducts(fetchedProducts)
+      } catch (err) {
+        console.error("Error fetching products:", err)
+        setError("Erreur lors du chargement du menu. Veuillez réessayer.")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProducts()
+  }, [])
+
+  // Group products by category
+  const menuItems = products.reduce((acc, product) => {
+    const existingCategory = acc.find(cat => cat.category === product.category)
+    if (existingCategory) {
+      existingCategory.items.push({
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        image: product.image,
+      })
+    } else {
+      acc.push({
+        category: product.category,
+        items: [{
+          id: product.id,
+          name: product.name,
+          description: product.description,
+          price: product.price,
+          image: product.image,
+        }]
+      })
+    }
+    return acc
+  }, [] as Array<{ category: string; items: Array<{ id: string; name: string; description: string; price: string; image: string }> }>)
 
   const galleryImages = [
     "/images/gallery-interior.jpg",
@@ -261,24 +204,49 @@ export default function TeaRoomLanding() {
             </p>
           </div>
 
-          {menuItems.map((category, categoryIndex) => (
-            <div key={categoryIndex} className="mb-16">
-              <h3 className="text-4xl font-accent text-amber-900 mb-8 text-center">{category.category}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {category.items.map((item, itemIndex) => (
-                  <MenuItemCard
-                    key={item.id}
-                    id={item.id}
-                    name={item.name}
-                    description={item.description}
-                    price={item.price}
-                    image={item.image}
-                    category={category.category}
-                  />
-                ))}
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="text-center">
+                <Loader2 className="w-12 h-12 text-green-600 animate-spin mx-auto mb-4" />
+                <p className="text-lg text-amber-700 font-body">Chargement du menu...</p>
               </div>
             </div>
-          ))}
+          ) : error ? (
+            <div className="text-center py-20">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
+                <p className="text-red-700 font-body">{error}</p>
+                <Button 
+                  onClick={() => window.location.reload()} 
+                  className="mt-4 bg-red-600 hover:bg-red-700"
+                >
+                  Réessayer
+                </Button>
+              </div>
+            </div>
+          ) : menuItems.length === 0 ? (
+            <div className="text-center py-20">
+              <p className="text-lg text-amber-700 font-body">Aucun produit disponible pour le moment.</p>
+            </div>
+          ) : (
+            menuItems.map((category, categoryIndex) => (
+              <div key={categoryIndex} className="mb-16">
+                <h3 className="text-4xl font-accent text-amber-900 mb-8 text-center">{category.category}</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {category.items.map((item, itemIndex) => (
+                    <MenuItemCard
+                      key={item.id}
+                      id={item.id}
+                      name={item.name}
+                      description={item.description}
+                      price={item.price}
+                      image={item.image}
+                      category={category.category}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </section>
 

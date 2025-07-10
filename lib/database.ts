@@ -5,6 +5,142 @@ import { collection, addDoc, getDocs, doc, updateDoc, query, where, orderBy, ser
 const mockOrders: Order[] = []
 let mockOrderCounter = 1
 
+// Product interface
+export interface Product {
+  id: string
+  name: string
+  description: string
+  price: string
+  image: string
+  category: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+// Mock products for fallback
+const mockProducts: Product[] = [
+  {
+    id: "juice-1",
+    name: "Jus d'Orange Frais",
+    description: "Oranges fraîchement pressées avec une pointe de menthe",
+    price: "650 DA",
+    image: "/images/fresh-orange-juice.jpg",
+    category: "Jus Naturels",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: "juice-2",
+    name: "Mélange Détox Vert",
+    description: "Épinards, pomme, concombre et gingembre",
+    price: "725 DA",
+    image: "/images/green-detox-smoothie.jpg",
+    category: "Jus Naturels",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: "juice-3",
+    name: "Antioxydant aux Baies",
+    description: "Baies mélangées avec grenade",
+    price: "700 DA",
+    image: "/images/berry-antioxidant-juice.jpg",
+    category: "Jus Naturels",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: "crepe-1",
+    name: "Crêpe Française Classique",
+    description: "Crêpe fine avec beurre, sucre et citron",
+    price: "850 DA",
+    image: "/images/classic-french-crepe.jpg",
+    category: "Crêpes",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: "crepe-2",
+    name: "Nutella & Banane",
+    description: "Crêpe chaude garnie de Nutella et banane fraîche",
+    price: "975 DA",
+    image: "/images/nutella-banana-crepe.jpg",
+    category: "Crêpes",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: "crepe-3",
+    name: "Jambon & Fromage Salé",
+    description: "Crêpe de sarrasin avec jambon, fromage et herbes",
+    price: "1125 DA",
+    image: "/images/ham-cheese-savory-crepe.jpg",
+    category: "Crêpes",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: "cappuccino-1",
+    name: "Cappuccino Classique",
+    description: "Espresso riche avec mousse de lait vapeur",
+    price: "475 DA",
+    image: "/images/classic-cappuccino.jpg",
+    category: "Cappuccinos",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: "cappuccino-2",
+    name: "Cappuccino Vanille",
+    description: "Cappuccino classique avec sirop de vanille",
+    price: "525 DA",
+    image: "/images/vanilla-cappuccino.jpg",
+    category: "Cappuccinos",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: "cappuccino-3",
+    name: "Cappuccino Caramel",
+    description: "Garni de caramel coulant et art de mousse",
+    price: "550 DA",
+    image: "/images/caramel-cappuccino.jpg",
+    category: "Cappuccinos",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: "sweet-1",
+    name: "Sélection de Macarons",
+    description: "Macarons français assortis (6 pièces)",
+    price: "1200 DA",
+    image: "/images/french-macarons.jpg",
+    category: "Douceurs",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: "sweet-2",
+    name: "Éclair au Chocolat",
+    description: "Pâte à choux garnie de crème vanille",
+    price: "450 DA",
+    image: "/images/chocolate-eclair.jpg",
+    category: "Douceurs",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: "sweet-3",
+    name: "Tarte aux Fruits",
+    description: "Fruits de saison sur base de crème vanille",
+    price: "625 DA",
+    image: "/images/seasonal-fruit-tart.jpg",
+    category: "Douceurs",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+]
+
 // Generate a unique tracking ID
 function generateTrackingId(): string {
   const prefix = "ELB"
@@ -299,4 +435,57 @@ export async function getAnalytics() {
   console.log(`   📅 Recent Orders (7 days): ${analytics.recentOrdersCount}`)
 
   return analytics
+}
+
+// Get all products
+export async function getProducts(): Promise<Product[]> {
+  console.log("🛍️ Fetching all products...")
+
+  if (isFirebaseConfigured() && db) {
+    try {
+      console.log("🔥 Querying Firebase for all products...")
+      const q = query(collection(db, "products"), orderBy("createdAt", "desc"))
+      const querySnapshot = await getDocs(q)
+
+      const products = querySnapshot.docs.map((docData) => {
+        const data = docData.data()
+        // Use imageUrl if present, fallback to image
+        let image = data.imageUrl || data.image || "/placeholder.jpg"
+        // Ensure price is a string with ' DA' if it's a number
+        let price = data.price
+        if (typeof price === "number") {
+          price = price.toString() + " DA"
+        } else if (typeof price !== "string") {
+          price = "N/A"
+        }
+        return {
+          id: docData.id,
+          name: data.name,
+          description: data.description,
+          price,
+          image,
+          category: data.category,
+          createdAt: ensureDate(data.createdAt),
+          updatedAt: ensureDate(data.updatedAt),
+        }
+      })
+
+      console.log(`✅ Retrieved ${products.length} products from Firebase`)
+      return products
+    } catch (error) {
+      console.error("❌ Error getting products from Firebase:", error)
+      console.error("   Error details:", {
+        message: error instanceof Error ? error.message : "Unknown error",
+        code: (error as any)?.code || "No error code",
+        stack: error instanceof Error ? error.stack : "No stack trace"
+      })
+      console.warn("🔄 Falling back to mock products...")
+    }
+  } else {
+    console.warn("⚠️ Firebase not available - using mock products")
+  }
+
+  // Fall back to mock products
+  console.log(`✅ Retrieved ${mockProducts.length} products from mock data`)
+  return mockProducts
 }
