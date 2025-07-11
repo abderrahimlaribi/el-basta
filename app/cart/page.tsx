@@ -22,6 +22,7 @@ export default function CartPage() {
     notes: "",
   })
   const [loading, setLoading] = useState(false)
+  const [validationError, setValidationError] = useState("")
 
   const handleQuantityChange = (id: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -31,14 +32,25 @@ export default function CartPage() {
     }
   }
 
-  const handleSubmitOrder = async () => {
-    if (!customerInfo.name || !customerInfo.phone || !customerInfo.address) {
-      alert("Veuillez remplir tous les champs obligatoires")
-      return
+  const validateForm = () => {
+    if (!customerInfo.name.trim() || !customerInfo.phone.trim() || !customerInfo.address.trim()) {
+      setValidationError("Veuillez remplir tous les champs obligatoires.")
+      return false
     }
+    // Basic phone validation: must be at least 8 digits and only numbers, spaces, +, -
+    const phonePattern = /^[+\d][\d\s-]{7,}$/
+    if (!phonePattern.test(customerInfo.phone.trim())) {
+      setValidationError("Veuillez entrer un numéro de téléphone valide.")
+      return false
+    }
+    setValidationError("")
+    return true
+  }
 
+  const handleSubmitOrder = async () => {
+    if (!validateForm()) return
     if (items.length === 0) {
-      alert("Votre panier est vide")
+      setValidationError("Votre panier est vide.")
       return
     }
 
@@ -77,33 +89,19 @@ export default function CartPage() {
         .map((item) => `• ${item.name} x${item.quantity} - ${(item.price * item.quantity).toFixed(0)} DA`)
         .join("\n")
 
-      const message = `🛍️ *Nouvelle Commande - ElBasta*
-
-📋 *Détails de la commande:*
-${orderDetails}
-
-💰 *Total: ${getTotalPrice().toFixed(0)} DA*
-
-👤 *Informations client:*
-• Nom: ${customerInfo.name}
-• Téléphone: ${customerInfo.phone}
-• Adresse: ${customerInfo.address}
-${customerInfo.notes ? `• Notes: ${customerInfo.notes}` : ""}
-
-🔍 *ID de suivi: ${data.trackingId}*
-📱 *Lien de suivi: ${window.location.origin}/suivi?tracking=${data.trackingId}*
-
-Merci pour votre commande ! 🙏`
+      const message = `🛍️ *Nouvelle Commande - ElBasta*\n\n🆔 *Code de commande: ${data.trackingId}*\n\n📋 *Détails de la commande:*\n${orderDetails}\n\n💰 *Total: ${getTotalPrice().toFixed(0)} DA*\n\n👤 *Informations client:*\n• Nom: ${customerInfo.name}\n• Téléphone: ${customerInfo.phone}\n• Adresse: ${customerInfo.address}\n${customerInfo.notes ? `• Notes: ${customerInfo.notes}` : ""}\n\n🔍 *ID de suivi: ${data.trackingId}*\n📱 *Lien de suivi: ${typeof window !== "undefined" ? window.location.origin : ""}/suivi?tracking=${data.trackingId}*\n\nMerci pour votre commande ! 🙏`
 
       const whatsappUrl = `https://wa.me/213665258642?text=${encodeURIComponent(message)}`
 
       // Clear cart and redirect
       clearCart()
-      window.open(whatsappUrl, "_blank")
+      if (typeof window !== "undefined") {
+        window.open(whatsappUrl, "_blank")
+      }
       router.push(`/suivi?tracking=${data.trackingId}`)
     } catch (error) {
       console.error("Error submitting order:", error)
-      alert("Erreur lors de la commande. Veuillez réessayer.")
+      setValidationError("Erreur lors de la commande. Veuillez réessayer.")
     } finally {
       setLoading(false)
     }
@@ -208,6 +206,11 @@ Merci pour votre commande ! 🙏`
                 <CardTitle className="text-2xl font-accent text-amber-900">Informations de livraison</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {validationError && (
+                  <div className="bg-red-100 text-red-700 rounded px-3 py-2 mb-2 text-center font-body text-sm">
+                    {validationError}
+                  </div>
+                )}
                 <div>
                   <Label htmlFor="name" className="text-amber-900 font-body font-semibold">
                     Nom complet *

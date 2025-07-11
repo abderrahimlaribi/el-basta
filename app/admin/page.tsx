@@ -290,6 +290,33 @@ export default function AdminPage() {
     }
   }
 
+  // Order deletion
+  const handleDeleteOrder = async (trackingId: string) => {
+    if (!confirm("Êtes-vous sûr de vouloir supprimer cette commande ?")) return
+    try {
+      const response = await fetch(`/api/orders/${trackingId}`, {
+        method: "DELETE",
+      })
+      if (response.ok) {
+        await fetchOrders()
+        toast({
+          title: "Commande supprimée",
+          description: "La commande a été supprimée avec succès.",
+          variant: "default",
+        })
+      } else {
+        throw new Error("Failed to delete order")
+      }
+    } catch (error) {
+      console.error("Error deleting order:", error)
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la commande. Veuillez réessayer.",
+        variant: "destructive",
+      })
+    }
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "En préparation":
@@ -477,6 +504,14 @@ export default function AdminPage() {
                           </div>
                         </DialogContent>
                       </Dialog>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="ml-2"
+                        onClick={() => handleDeleteOrder(order.trackingId)}
+                      >
+                        Supprimer
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

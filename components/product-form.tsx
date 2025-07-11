@@ -158,7 +158,11 @@ export function ProductForm({ product, onSubmit, onCancel, loading }: ProductFor
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => document.getElementById("image")?.click()}
+                  onClick={() => {
+                  if (typeof document !== "undefined") {
+                    document.getElementById("image")?.click()
+                  }
+                }}
                   disabled={uploading}
                 >
                   {uploading ? (

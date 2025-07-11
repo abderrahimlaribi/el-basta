@@ -1,5 +1,5 @@
 import { db, isFirebaseConfigured, type Order, type OrderCreate, ensureDate } from "./firebase"
-import { collection, addDoc, getDocs, doc, updateDoc, query, where, orderBy, serverTimestamp } from "firebase/firestore"
+import { collection, addDoc, getDocs, doc, updateDoc, query, where, orderBy, serverTimestamp, deleteDoc } from "firebase/firestore"
 
 // Mock data store for when Firebase is not configured
 const mockOrders: Order[] = []
@@ -359,6 +359,41 @@ export async function updateOrderStatus(
     console.log("✅ Order updated in mock storage")
   } else {
     console.error("❌ Order not found in mock storage for update")
+  }
+}
+
+// Delete order by tracking ID
+export async function deleteOrderByTrackingId(trackingId: string): Promise<boolean> {
+  console.log('🗑️ Deleting order with tracking ID:', trackingId)
+
+  if (isFirebaseConfigured() && db) {
+    try {
+      // Find the order document by trackingId
+      const q = query(collection(db, 'orders'), where('trackingId', '==', trackingId))
+      const querySnapshot = await getDocs(q)
+      if (querySnapshot.empty) {
+        console.log('❌ Order not found in Firebase')
+        return false
+      }
+      const docRef = querySnapshot.docs[0].ref
+      await deleteDoc(docRef)
+      console.log('✅ Order deleted from Firebase')
+      return true
+    } catch (error) {
+      console.error('❌ Error deleting order from Firebase:', error)
+      return false
+    }
+  } else {
+    console.warn('⚠️ Firebase not available - deleting from mock storage')
+    const index = mockOrders.findIndex((order) => order.trackingId === trackingId)
+    if (index !== -1) {
+      mockOrders.splice(index, 1)
+      console.log('✅ Order deleted from mock storage')
+      return true
+    } else {
+      console.log('❌ Order not found in mock storage')
+      return false
+    }
   }
 }
 

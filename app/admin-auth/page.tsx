@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import bcrypt from "bcryptjs"
 
 export default function AdminAuthPage() {
   const [password, setPassword] = useState("")
@@ -10,26 +9,15 @@ export default function AdminAuthPage() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
-  // Access the hashed password from the environment variable (base64 encoded, then decoded and trimmed)
-  const hashedPassword = atob(process.env.NEXT_PUBLIC_ADMIN_HASHED_PASSWORD_BASE64 || "").trim()
-  // For security, do not log the hash in production
-  console.log("Hashed password:", hashedPassword);
+  const ADMIN_PASSWORD = "ElBasta2024!"; // Plaintext for testing
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setLoading(true)
     try {
-      if (!hashedPassword) {
-        setError("Configuration error: Admin password not set.")
-        setLoading(false)
-        return
-      }
-      // bcryptjs compare is sync here
-      console.log(password, hashedPassword);
-      console.log(bcrypt.compareSync(password, hashedPassword));
-      const match = bcrypt.compareSync(password, hashedPassword)
-      if (match) {
+      if (password === ADMIN_PASSWORD) {
+        document.cookie = "admin-session=authenticated; path=/; max-age=3600; secure; samesite=strict"
         router.replace("/admin")
       } else {
         setError("Access denied: Admins only.")

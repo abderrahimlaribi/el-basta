@@ -21,6 +21,8 @@ import {
 import { useState, useEffect } from "react"
 import { CartIcon } from "@/components/cart-icon"
 import { MenuItemCard } from "@/components/menu-item-card"
+import { MobileHeader } from "@/components/mobile-header"
+
 import Link from "next/link"
 import { getProducts, type Product } from "@/lib/database"
 
@@ -94,33 +96,38 @@ export default function TeaRoomLanding() {
 
   return (
     <div className="min-h-screen bg-cream-50 font-body">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm shadow-sm">
+      {/* Mobile Header */}
+      <MobileHeader />
+      
+      {/* Desktop Navigation */}
+      <nav className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-white shadow-lg border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Leaf className="w-8 h-8 text-green-600" />
-              <span className="text-3xl font-accent text-amber-900">ElBasta</span>
+              <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
+                <Leaf className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-3xl font-accent text-amber-900 font-bold drop-shadow-sm">ElBasta</span>
             </div>
-            <div className="hidden md:flex items-center space-x-8">
-              <a href="#home" className="text-amber-900 hover:text-green-600 transition-colors font-medium">
+            <div className="flex items-center space-x-8">
+              <a href="#home" className="text-amber-900 hover:text-green-600 transition-colors font-semibold px-3 py-2 rounded-lg hover:bg-green-50 drop-shadow-sm">
                 Accueil
               </a>
-              <a href="#about" className="text-amber-900 hover:text-green-600 transition-colors font-medium">
+              <a href="#about" className="text-amber-900 hover:text-green-600 transition-colors font-semibold px-3 py-2 rounded-lg hover:bg-green-50 drop-shadow-sm">
                 À Propos
               </a>
-              <a href="#menu" className="text-amber-900 hover:text-green-600 transition-colors font-medium">
+              <a href="#menu" className="text-amber-900 hover:text-green-600 transition-colors font-semibold px-3 py-2 rounded-lg hover:bg-green-50 drop-shadow-sm">
                 Menu
               </a>
-              <a href="#gallery" className="text-amber-900 hover:text-green-600 transition-colors font-medium">
+              <a href="#gallery" className="text-amber-900 hover:text-green-600 transition-colors font-semibold px-3 py-2 rounded-lg hover:bg-green-50 drop-shadow-sm">
                 Galerie
               </a>
-              <a href="#contact" className="text-amber-900 hover:text-green-600 transition-colors font-medium">
+              <a href="#contact" className="text-amber-900 hover:text-green-600 transition-colors font-semibold px-3 py-2 rounded-lg hover:bg-green-50 drop-shadow-sm">
                 Contact
               </a>
               <Link
                 href="/suivi"
-                className="text-amber-900 hover:text-green-600 transition-colors font-medium flex items-center"
+                className="text-amber-900 hover:text-green-600 transition-colors font-semibold flex items-center px-3 py-2 rounded-lg hover:bg-green-50 drop-shadow-sm"
               >
                 <Package className="w-4 h-4 mr-1" />
                 Suivi
@@ -133,23 +140,23 @@ export default function TeaRoomLanding() {
 
       {/* Hero Section */}
       <section id="home" className="relative h-screen flex items-center justify-center">
-        <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/40 z-10"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/30 z-10"></div>
         <div className="absolute inset-0">
           <Image src="/images/hero-background.jpg" alt="ElBasta Interior" fill className="object-cover" priority />
         </div>
         <div className="relative z-20 text-center text-white max-w-4xl mx-auto px-6">
-          <h1 className="text-7xl md:text-8xl font-accent mb-6 leading-tight text-shadow-lg">ElBasta</h1>
-          <p className="text-3xl md:text-4xl font-accent mb-8 text-cream-100">Savourez des Moments Doux</p>
-          <p className="text-lg mb-12 max-w-2xl mx-auto text-cream-200 font-body leading-relaxed">
+          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-accent mb-6 leading-tight text-shadow-lg animate-fade-in">ElBasta</h1>
+          <p className="text-2xl sm:text-3xl md:text-4xl font-accent mb-8 text-cream-100 animate-fade-in-delay">Savourez des Moments Doux</p>
+          <p className="text-base sm:text-lg mb-12 max-w-2xl mx-auto text-cream-200 font-body leading-relaxed animate-fade-in-delay-2">
             Découvrez le mélange parfait de tranquillité et de goût avec nos thés soigneusement préparés, jus frais,
             crêpes artisanales et douceurs délicieuses.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-delay-3">
             <a href="#menu">
               <Button
                 size="lg"
                 variant="outline"
-                className="border-2 border-white text-white hover:bg-white hover:text-amber-900 px-8 py-4 text-lg rounded-full shadow-lg transform hover:scale-105 transition-all duration-300 bg-transparent font-semibold"
+                className="border-2 border-white text-white hover:bg-white hover:text-amber-900 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg rounded-full shadow-lg transform hover:scale-105 transition-all duration-300 bg-transparent font-semibold"
               >
                 Commander Maintenant
               </Button>
@@ -216,7 +223,11 @@ export default function TeaRoomLanding() {
               <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
                 <p className="text-red-700 font-body">{error}</p>
                 <Button 
-                  onClick={() => window.location.reload()} 
+                  onClick={() => {
+                    if (typeof window !== "undefined") {
+                      window.location.reload()
+                    }
+                  }} 
                   className="mt-4 bg-red-600 hover:bg-red-700"
                 >
                   Réessayer
@@ -526,6 +537,8 @@ export default function TeaRoomLanding() {
           </div>
         </div>
       </footer>
+
+
     </div>
   )
 }
