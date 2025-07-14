@@ -163,6 +163,9 @@ export async function createOrder(orderData: OrderCreate): Promise<{ order: Orde
     estimatedTime: "",
     createdAt: now,
     updatedAt: now,
+    customerName: orderData.customerName,
+    customerPhone: orderData.customerPhone,
+    customerNotes: orderData.customerNotes,
   }
 
   console.log("📦 Creating order with tracking ID:", trackingId)
@@ -177,6 +180,9 @@ export async function createOrder(orderData: OrderCreate): Promise<{ order: Orde
         estimatedTime: "",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+        customerName: orderData.customerName,
+        customerPhone: orderData.customerPhone,
+        customerNotes: orderData.customerNotes,
       }
 
       const docRef = await addDoc(collection(db, "orders"), orderToCreate)
@@ -238,6 +244,9 @@ export async function getOrderByTrackingId(trackingId: string): Promise<Order | 
         estimatedTime: data.estimatedTime || "",
         createdAt: ensureDate(data.createdAt),
         updatedAt: ensureDate(data.updatedAt),
+        customerName: data.customerName,
+        customerPhone: data.customerPhone,
+        customerNotes: data.customerNotes,
       }
     } catch (error) {
       console.error("❌ Error getting order from Firebase:", error)
@@ -284,6 +293,9 @@ export async function getAllOrders(): Promise<Order[]> {
           estimatedTime: data.estimatedTime || "",
           createdAt: ensureDate(data.createdAt),
           updatedAt: ensureDate(data.updatedAt),
+          customerName: data.customerName,
+          customerPhone: data.customerPhone,
+          customerNotes: data.customerNotes,
         }
       })
 

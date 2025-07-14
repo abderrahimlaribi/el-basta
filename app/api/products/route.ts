@@ -10,7 +10,7 @@ export interface Product {
   name: string
   description: string
   price: number
-  category: string
+  categoryId: string
   imageUrl: string
   createdAt: Date
   updatedAt: Date
@@ -20,7 +20,7 @@ export interface ProductCreate {
   name: string
   description: string
   price: number
-  category: string
+  categoryId: string
   imageUrl: string
 }
 
@@ -40,7 +40,7 @@ export async function GET() {
           name: data.name,
           description: data.description,
           price: data.price,
-          category: data.category,
+          categoryId: data.categoryId,
           imageUrl: data.imageUrl,
           createdAt: data.createdAt?.toDate() || new Date(),
           updatedAt: data.updatedAt?.toDate() || new Date(),
@@ -71,11 +71,11 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, description, price, category, imageUrl } = body
+    const { name, description, price, categoryId, imageUrl } = body
 
-    console.log("📦 Creating new product:", { name, price, category })
+    console.log("📦 Creating new product:", { name, price, categoryId })
 
-    if (!name || !description || !price || !category || !imageUrl) {
+    if (!name || !description || !price || !categoryId || !imageUrl) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
       name,
       description,
       price: Number(price),
-      category,
+      categoryId,
       imageUrl,
     }
 

@@ -18,7 +18,7 @@ import {
   Package,
   Loader2,
 } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { CartIcon } from "@/components/cart-icon"
 import { MenuItemCard } from "@/components/menu-item-card"
 import { MobileHeader } from "@/components/mobile-header"
@@ -26,56 +26,45 @@ import { MobileHeader } from "@/components/mobile-header"
 import Link from "next/link"
 import { getProducts, type Product } from "@/lib/database"
 
+// Add types
+interface Category { id: string; name: string; slug: string }
+interface Product { id: string; name: string; description: string; price: number; imageUrl: string; categoryId: string }
+
 export default function TeaRoomLanding() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [categories, setCategories] = useState<Category[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Fetch products on component mount
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchData = async () => {
+      setLoading(true)
+      setError(null)
       try {
-        setLoading(true)
-        setError(null)
-        const fetchedProducts = await getProducts()
-        setProducts(fetchedProducts)
+        const [catRes, prodRes] = await Promise.all([
+          fetch("/api/categories"),
+          fetch("/api/products")
+        ])
+        const catData = await catRes.json()
+        const prodData = await prodRes.json()
+        setCategories(catData.categories || [])
+        setProducts(prodData.products || [])
       } catch (err) {
-        console.error("Error fetching products:", err)
         setError("Erreur lors du chargement du menu. Veuillez réessayer.")
       } finally {
         setLoading(false)
       }
     }
-
-    fetchProducts()
+    fetchData()
   }, [])
 
-  // Group products by category
-  const menuItems = products.reduce((acc, product) => {
-    const existingCategory = acc.find(cat => cat.category === product.category)
-    if (existingCategory) {
-      existingCategory.items.push({
-        id: product.id,
-        name: product.name,
-        description: product.description,
-        price: product.price,
-        image: product.image,
-      })
-    } else {
-      acc.push({
-        category: product.category,
-        items: [{
-          id: product.id,
-          name: product.name,
-          description: product.description,
-          price: product.price,
-          image: product.image,
-        }]
-      })
-    }
-    return acc
-  }, [] as Array<{ category: string; items: Array<{ id: string; name: string; description: string; price: string; image: string }> }>)
+  // Group products by categoryId
+  const productsByCategory: { [categoryId: string]: Product[] } = {}
+  products.forEach(product => {
+    if (!productsByCategory[product.categoryId]) productsByCategory[product.categoryId] = []
+    productsByCategory[product.categoryId].push(product)
+  })
 
   const galleryImages = [
     "/images/gallery-interior.jpg",
@@ -152,15 +141,16 @@ export default function TeaRoomLanding() {
             crêpes artisanales et douceurs délicieuses.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-delay-3">
-            <a href="#menu">
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-2 border-white text-white hover:bg-white hover:text-amber-900 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg rounded-full shadow-lg transform hover:scale-105 transition-all duration-300 bg-transparent font-semibold"
+            {categories.map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => document.getElementById(cat.slug)?.scrollIntoView({ behavior: 'smooth' })}
+                className="border-2 border-white text-white hover:bg-white hover:text-amber-900 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg rounded-full shadow-lg transform hover:scale-105 transition-all duration-300 bg-transparent font-semibold focus:outline-none focus:ring-2 focus:ring-white"
+                type="button"
               >
-                Commander Maintenant
-              </Button>
-            </a>
+                {cat.name}
+              </button>
+            ))}
           </div>
         </div>
       </section>
@@ -234,24 +224,24 @@ export default function TeaRoomLanding() {
                 </Button>
               </div>
             </div>
-          ) : menuItems.length === 0 ? (
+          ) : categories.length === 0 ? (
             <div className="text-center py-20">
               <p className="text-lg text-amber-700 font-body">Aucun produit disponible pour le moment.</p>
             </div>
           ) : (
-            menuItems.map((category, categoryIndex) => (
-              <div key={categoryIndex} className="mb-16">
-                <h3 className="text-4xl font-accent text-amber-900 mb-8 text-center">{category.category}</h3>
+            categories.map(cat => (
+              <div key={cat.id} id={cat.slug} className="mb-16">
+                <h3 className="text-4xl font-accent text-amber-900 mb-8 text-center">{cat.name}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {category.items.map((item, itemIndex) => (
+                  {(productsByCategory[cat.id] || []).map(item => (
                     <MenuItemCard
                       key={item.id}
                       id={item.id}
                       name={item.name}
                       description={item.description}
                       price={item.price}
-                      image={item.image}
-                      category={category.category}
+                      image={item.imageUrl}
+                      category={cat.name}
                     />
                   ))}
                 </div>

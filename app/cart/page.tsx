@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
-import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft } from "lucide-react"
+import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft, MapPin } from "lucide-react"
 import Link from "next/link"
 import { useCartStore } from "@/lib/cart-store"
+import Image from "next/image"
 
 export default function CartPage() {
   const router = useRouter()
@@ -23,6 +24,12 @@ export default function CartPage() {
   })
   const [loading, setLoading] = useState(false)
   const [validationError, setValidationError] = useState("")
+  const [phoneError, setPhoneError] = useState("")
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [deliveryMethod, setDeliveryMethod] = useState<'livraison' | 'surplace'>('livraison')
+  const [locationUrl, setLocationUrl] = useState("")
+  const [locationError, setLocationError] = useState("")
+  const [locationLoading, setLocationLoading] = useState(false)
 
   const handleQuantityChange = (id: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -32,22 +39,64 @@ export default function CartPage() {
     }
   }
 
+  const validatePhone = (phone: string) => {
+    const phonePattern = /^0\d{9}$/
+    if (!phonePattern.test(phone.trim())) {
+      setPhoneError("Numéro invalide. Veuillez entrer un numéro à 10 chiffres commençant par 0.")
+      return false
+    }
+    setPhoneError("")
+    return true
+  }
+
+  const handleShareLocation = () => {
+    setLocationError("")
+    setLocationLoading(true)
+    if (!navigator.geolocation) {
+      setLocationError("La géolocalisation n'est pas supportée par votre navigateur.")
+      setLocationLoading(false)
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords
+        const url = `https://www.google.com/maps?q=${latitude},${longitude}`
+        setLocationUrl(url)
+        setLocationLoading(false)
+      },
+      (error) => {
+        setLocationError("Impossible de récupérer votre position. Veuillez autoriser l'accès à la localisation.")
+        setLocationLoading(false)
+      }
+    )
+  }
+
   const validateForm = () => {
-    if (!customerInfo.name.trim() || !customerInfo.phone.trim() || !customerInfo.address.trim()) {
+    if (!customerInfo.name.trim() || !customerInfo.phone.trim() || (deliveryMethod === 'livraison' && !locationUrl)) {
       setValidationError("Veuillez remplir tous les champs obligatoires.")
       return false
     }
-    // Basic phone validation: must be at least 8 digits and only numbers, spaces, +, -
-    const phonePattern = /^[+\d][\d\s-]{7,}$/
-    if (!phonePattern.test(customerInfo.phone.trim())) {
-      setValidationError("Veuillez entrer un numéro de téléphone valide.")
+    if (!validatePhone(customerInfo.phone)) {
+      setValidationError("")
       return false
     }
     setValidationError("")
     return true
   }
 
+  const isFormValid =
+    customerInfo.name.trim() &&
+    customerInfo.phone.trim() &&
+    (deliveryMethod === 'surplace' || locationUrl) &&
+    !phoneError &&
+    termsAccepted &&
+    !loading
+
   const handleSubmitOrder = async () => {
+    if (!termsAccepted) {
+      setValidationError("terms")
+      return
+    }
     if (!validateForm()) return
     if (items.length === 0) {
       setValidationError("Votre panier est vide.")
@@ -65,9 +114,13 @@ export default function CartPage() {
           quantity: item.quantity,
           price: item.price,
           category: item.category,
+          image: item.image,
         })),
-        deliveryAddress: customerInfo.address,
+        deliveryAddress: deliveryMethod === 'surplace' ? 'Sur place' : locationUrl,
         totalPrice: getTotalPrice(),
+        customerName: customerInfo.name,
+        customerPhone: customerInfo.phone,
+        customerNotes: customerInfo.notes,
       }
 
       const response = await fetch("/api/orders", {
@@ -88,8 +141,8 @@ export default function CartPage() {
       const orderDetails = items
         .map((item) => `• ${item.name} x${item.quantity} - ${(item.price * item.quantity).toFixed(0)} DA`)
         .join("\n")
-
-      const message = `🛍️ *Nouvelle Commande - ElBasta*\n\n🆔 *Code de commande: ${data.trackingId}*\n\n📋 *Détails de la commande:*\n${orderDetails}\n\n💰 *Total: ${getTotalPrice().toFixed(0)} DA*\n\n👤 *Informations client:*\n• Nom: ${customerInfo.name}\n• Téléphone: ${customerInfo.phone}\n• Adresse: ${customerInfo.address}\n${customerInfo.notes ? `• Notes: ${customerInfo.notes}` : ""}\n\n🔍 *ID de suivi: ${data.trackingId}*\n📱 *Lien de suivi: ${typeof window !== "undefined" ? window.location.origin : ""}/suivi?tracking=${data.trackingId}*\n\nMerci pour votre commande ! 🙏`
+      const addressText = deliveryMethod === 'surplace' ? 'Sur place (à retirer chez ElBasta)' : (locationUrl ? locationUrl : "[Adresse non fournie]")
+      const message = `🛍️ *Nouvelle Commande - ElBasta*\n\n🆔 *Code de commande: ${data.trackingId}*\n\n📋 *Détails de la commande:*\n${orderDetails}\n\n💰 *Total: ${getTotalPrice().toFixed(0)} DA*\n\n👤 *Informations client:*\n• Nom: ${customerInfo.name}\n• Téléphone: ${customerInfo.phone}\n• Adresse: ${addressText}\n${customerInfo.notes ? `• Notes: ${customerInfo.notes}` : ""}\n\n🔍 *ID de suivi: ${data.trackingId}*\n📱 *Lien de suivi: ${typeof window !== "undefined" ? window.location.origin : ""}/suivi?tracking=${data.trackingId}*\n\nMerci pour votre commande ! 🙏`
 
       const whatsappUrl = `https://wa.me/213665258642?text=${encodeURIComponent(message)}`
 
@@ -153,13 +206,20 @@ export default function CartPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {items.map((item) => (
-                  <div key={item.id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-amber-900 font-body">{item.name}</h3>
+                  <div key={item.id} className="flex flex-col sm:flex-row items-center sm:items-start space-y-2 sm:space-y-0 sm:space-x-4 p-4 bg-gray-50 rounded-lg">
+                    <Image
+                      src={item.image || "/placeholder.svg"}
+                      alt={item.name}
+                      width={50}
+                      height={50}
+                      className="rounded object-cover flex-shrink-0 mb-2 sm:mb-0"
+                    />
+                    <div className="flex-1 w-full">
+                      <h3 className="font-semibold text-amber-900 font-body text-base sm:text-lg">{item.name}</h3>
                       <p className="text-sm text-amber-700 font-body">{item.category}</p>
                       <p className="text-sm font-semibold text-green-600 font-body">{formatPrice(item.price)}</p>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 mt-2 sm:mt-0">
                       <Button
                         variant="outline"
                         size="sm"
@@ -180,7 +240,11 @@ export default function CartPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => removeItem(item.id)}
+                        onClick={() => {
+                          if (window.confirm("Voulez-vous vraiment supprimer cet article ?")) {
+                            removeItem(item.id)
+                          }
+                        }}
                         className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -197,6 +261,13 @@ export default function CartPage() {
                 </div>
               </CardContent>
             </Card>
+            <Button
+              className="w-full mt-4 flex items-center justify-center gap-2 bg-amber-900 hover:bg-amber-800 text-white font-body"
+              onClick={() => router.push("/")}
+            >
+              <Plus className="w-4 h-4" />
+              Ajouter un produit
+            </Button>
           </div>
 
           {/* Customer Information */}
@@ -205,10 +276,10 @@ export default function CartPage() {
               <CardHeader>
                 <CardTitle className="text-2xl font-accent text-amber-900">Informations de livraison</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 text-base sm:text-lg">
                 {validationError && (
                   <div className="bg-red-100 text-red-700 rounded px-3 py-2 mb-2 text-center font-body text-sm">
-                    {validationError}
+                    {validationError === "terms" ? "Vous devez accepter les conditions générales." : validationError}
                   </div>
                 )}
                 <div>
@@ -233,25 +304,74 @@ export default function CartPage() {
                     id="phone"
                     type="tel"
                     value={customerInfo.phone}
-                    onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
-                    className="mt-1 font-body"
+                    onChange={(e) => {
+                      setCustomerInfo({ ...customerInfo, phone: e.target.value })
+                      validatePhone(e.target.value)
+                    }}
+                    className={`mt-1 font-body ${phoneError ? "border-red-500" : ""}`}
                     placeholder="Ex: 0770 22 44 72"
+                    aria-invalid={!!phoneError}
                   />
+                  {phoneError && (
+                    <div className="text-red-600 text-sm font-body mt-1">{phoneError}</div>
+                  )}
                 </div>
 
-                <div>
-                  <Label htmlFor="address" className="text-amber-900 font-body font-semibold">
-                    Adresse de livraison *
-                  </Label>
-                  <Textarea
-                    id="address"
-                    value={customerInfo.address}
-                    onChange={(e) => setCustomerInfo({ ...customerInfo, address: e.target.value })}
-                    className="mt-1 font-body"
-                    placeholder="Adresse complète de livraison"
-                    rows={3}
-                  />
+                <div className="space-y-2">
+                  <Label className="text-amber-900 font-body font-semibold">Mode de réception *</Label>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <label className="flex items-center gap-2 font-body">
+                      <input
+                        type="radio"
+                        name="deliveryMethod"
+                        value="livraison"
+                        checked={deliveryMethod === 'livraison'}
+                        onChange={() => setDeliveryMethod('livraison')}
+                        className="accent-green-600"
+                      />
+                      Livraison à domicile
+                    </label>
+                    <label className="flex items-center gap-2 font-body">
+                      <input
+                        type="radio"
+                        name="deliveryMethod"
+                        value="surplace"
+                        checked={deliveryMethod === 'surplace'}
+                        onChange={() => setDeliveryMethod('surplace')}
+                        className="accent-green-600"
+                      />
+                      Commande sur place (à retirer chez ElBasta)
+                    </label>
+                  </div>
                 </div>
+
+                {deliveryMethod === 'livraison' && (
+                  <div>
+                    <Label className="text-amber-900 font-body font-semibold">Adresse de livraison *</Label>
+                    <Button
+                      type="button"
+                      className="mb-2 flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-body rounded-full shadow px-4 py-2 transition-all duration-200"
+                      onClick={handleShareLocation}
+                      disabled={locationLoading}
+                    >
+                      <MapPin className="w-4 h-4" />
+                      {locationLoading ? "Récupération..." : "Partager ma position"}
+                    </Button>
+                    {locationUrl && (
+                      <div className="mt-2 flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-green-800 font-body text-sm">
+                        <MapPin className="w-4 h-4 text-green-600" />
+                        Position partagée :
+                        <a href={locationUrl} target="_blank" rel="noopener noreferrer" className="underline text-green-700">Voir sur la carte</a>
+                      </div>
+                    )}
+                    {locationError && (
+                      <div className="mt-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-red-700 font-body text-sm flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-red-600" />
+                        {locationError}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <Label htmlFor="notes" className="text-amber-900 font-body font-semibold">
@@ -267,12 +387,29 @@ export default function CartPage() {
                   />
                 </div>
 
+                <div className="flex items-center space-x-2 mt-2">
+                  <input
+                    id="terms"
+                    type="checkbox"
+                    checked={termsAccepted}
+                    onChange={e => setTermsAccepted(e.target.checked)}
+                    className="accent-green-600 w-4 h-4"
+                    required
+                  />
+                  <label htmlFor="terms" className="text-sm font-body">
+                    J'accepte les <Link href="/conditions" target="_blank" className="underline text-green-700">conditions générales</Link>
+                  </label>
+                </div>
+                {!termsAccepted && validationError === "terms" && (
+                  <div className="text-red-600 text-sm font-body mt-1">Vous devez accepter les conditions générales.</div>
+                )}
+
                 <Button
                   onClick={handleSubmitOrder}
-                  disabled={loading}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white font-body text-lg py-3"
+                  disabled={!isFormValid}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white font-body text-lg py-3 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {loading ? "Commande en cours..." : "Confirmer la commande"}
+                  {loading ? "Commande en cours..." : "Commander via WhatsApp"}
                 </Button>
 
                 <p className="text-sm text-amber-700 font-body text-center">

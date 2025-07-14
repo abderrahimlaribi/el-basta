@@ -1,5 +1,17 @@
 import { initializeApp, getApps } from "firebase/app"
 import { getFirestore } from "firebase/firestore"
+import {
+  collection,
+  getDocs,
+  addDoc,
+  deleteDoc,
+  updateDoc,
+  doc,
+  getDoc,
+  query,
+  where,
+  orderBy,
+} from "firebase/firestore"
 
 // Firebase configuration with fallback values
 const firebaseConfig = {
@@ -91,6 +103,9 @@ export interface Order {
   estimatedTime?: string
   createdAt: Date
   updatedAt: Date
+  customerName?: string
+  customerPhone?: string
+  customerNotes?: string
 }
 
 export interface OrderCreate {
@@ -98,6 +113,9 @@ export interface OrderCreate {
   deliveryAddress: string
   totalPrice: number
   status?: Order["status"]
+  customerName?: string
+  customerPhone?: string
+  customerNotes?: string
 }
 
 // Utility function to ensure dates are properly converted
@@ -112,4 +130,56 @@ export const ensureDate = (date: any): Date => {
     return date.toDate()
   }
   return new Date()
+}
+
+// Category helpers
+export async function getCategories() {
+  if (!db) return []
+  const snapshot = await getDocs(query(collection(db, "categories"), orderBy("name")))
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+}
+
+export async function addCategory({ name, slug }: { name: string; slug: string }) {
+  if (!db) return null
+  const docRef = await addDoc(collection(db, "categories"), { name, slug })
+  return { id: docRef.id, name, slug }
+}
+
+export async function deleteCategory(id: string) {
+  if (!db) return
+  await deleteDoc(doc(db, "categories", id))
+}
+
+export async function updateCategory(id: string, data: { name?: string; slug?: string }) {
+  if (!db) return
+  await updateDoc(doc(db, "categories", id), data)
+}
+
+// Product helpers
+export async function getProducts() {
+  if (!db) return []
+  const snapshot = await getDocs(collection(db, "products"))
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+}
+
+export async function addProduct(product: any) {
+  if (!db) return null
+  const docRef = await addDoc(collection(db, "products"), product)
+  return { id: docRef.id, ...product }
+}
+
+export async function deleteProduct(id: string) {
+  if (!db) return
+  await deleteDoc(doc(db, "products", id))
+}
+
+export async function updateProduct(id: string, data: any) {
+  if (!db) return
+  await updateDoc(doc(db, "products", id), data)
+}
+
+export async function getProductsByCategory(categoryId: string) {
+  if (!db) return []
+  const snapshot = await getDocs(query(collection(db, "products"), where("categoryId", "==", categoryId)))
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
 }

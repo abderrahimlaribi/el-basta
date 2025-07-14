@@ -13,7 +13,7 @@ interface MenuItemCardProps {
   id: string
   name: string
   description: string
-  price: string
+  price: number
   image: string
   category: string
 }
@@ -29,7 +29,7 @@ export function MenuItemCard({ id, name, description, price, image, category }: 
     addItem({
       id,
       name,
-      price: Number.parseFloat(price.replace(" DA", "")),
+      price,
       image,
       category,
     })
@@ -62,7 +62,7 @@ export function MenuItemCard({ id, name, description, price, image, category }: 
           className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
         />
         <div className="absolute top-4 right-4">
-          <Badge className="bg-green-600 text-white">{price}</Badge>
+          <Badge className="bg-green-600 text-white">{price.toLocaleString()} DA</Badge>
         </div>
       </div>
       <CardContent className="p-6">

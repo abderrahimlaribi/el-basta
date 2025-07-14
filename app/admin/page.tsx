@@ -34,6 +34,9 @@ interface Order {
   estimatedTime?: string
   createdAt: string | Date
   updatedAt: string | Date
+  phone?: string
+  phoneNumber?: string
+  customerPhone?: string
 }
 
 interface Analytics {
@@ -56,6 +59,13 @@ interface Product {
   updatedAt: Date
 }
 
+// Category type
+interface Category {
+  id: string
+  name: string
+  slug: string
+}
+
 export default function AdminPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [analytics, setAnalytics] = useState<Analytics | null>(null)
@@ -71,6 +81,9 @@ export default function AdminPage() {
   const [productLoading, setProductLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
   const { toast } = useToast()
+  const [categories, setCategories] = useState<Category[]>([])
+  const [categoryName, setCategoryName] = useState("")
+  const [categoryLoading, setCategoryLoading] = useState(false)
 
   const fetchOrders = async () => {
     try {
@@ -129,6 +142,59 @@ export default function AdminPage() {
     }
   }
 
+  // Fetch categories
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch("/api/categories")
+      const data = await res.json()
+      setCategories(data.categories || [])
+    } catch (e) {
+      console.error("Error fetching categories", e)
+    }
+  }
+
+  // Add category
+  const handleAddCategory = async () => {
+    if (!categoryName.trim()) return
+    setCategoryLoading(true)
+    const slug = categoryName.trim().toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/\s+/g, "-")
+    try {
+      const res = await fetch("/api/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: categoryName.trim(), slug })
+      })
+      if (res.ok) {
+        setCategoryName("")
+        await fetchCategories()
+        toast({ title: "Catégorie ajoutée", description: "La catégorie a été ajoutée avec succès." })
+      }
+    } catch (e) {
+      toast({ title: "Erreur", description: "Impossible d'ajouter la catégorie.", variant: "destructive" })
+    } finally {
+      setCategoryLoading(false)
+    }
+  }
+
+  // Delete category
+  const handleDeleteCategory = async (id: string) => {
+    if (!confirm("Supprimer cette catégorie ?")) return
+    setCategoryLoading(true)
+    try {
+      await fetch("/api/categories", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id })
+      })
+      await fetchCategories()
+      toast({ title: "Catégorie supprimée", description: "La catégorie a été supprimée." })
+    } catch (e) {
+      toast({ title: "Erreur", description: "Impossible de supprimer la catégorie.", variant: "destructive" })
+    } finally {
+      setCategoryLoading(false)
+    }
+  }
+
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -150,6 +216,9 @@ export default function AdminPage() {
 
     return () => clearInterval(interval)
   }, [mounted])
+
+  // Fetch categories on mount
+  useEffect(() => { fetchCategories() }, [])
 
   const updateOrderStatus = async () => {
     if (!selectedOrder || !newStatus) return
@@ -442,6 +511,7 @@ export default function AdminPage() {
                   <TableHead>Articles</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead>Statut</TableHead>
+                  <TableHead>Téléphone</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -454,6 +524,15 @@ export default function AdminPage() {
                     <TableCell>{formatPrice(order.totalPrice)}</TableCell>
                     <TableCell>
                       <Badge key={order.id} className={getStatusColor(order.status)}>{order.status}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {order.customerPhone || order.phone ? (
+                        <a href={`tel:${order.customerPhone || order.phone}`} className="text-blue-600 underline">
+                          {order.customerPhone || order.phone}
+                        </a>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Dialog>
@@ -512,6 +591,20 @@ export default function AdminPage() {
                       >
                         Supprimer
                       </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="ml-2"
+                        asChild
+                      >
+                        <a
+                          href={`/suivi?tracking=${order.trackingId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Voir la commande
+                        </a>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -519,6 +612,37 @@ export default function AdminPage() {
             </Table>
           </CardContent>
         </Card>
+
+        {/* Category Management Section */}
+        <div className="mb-12">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Gestion des Catégories</h2>
+          <p className="text-gray-600 mb-4">Ajoutez, supprimez et gérez vos catégories de produits</p>
+          <div className="flex gap-2 mb-4">
+            <input
+              type="text"
+              value={categoryName}
+              onChange={e => setCategoryName(e.target.value)}
+              placeholder="Nom de la catégorie"
+              className="border rounded px-3 py-2 w-64"
+              disabled={categoryLoading}
+            />
+            <Button onClick={handleAddCategory} disabled={categoryLoading || !categoryName.trim()}>
+              Ajouter
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {categories.map(cat => (
+              <div key={cat.id} className="flex items-center bg-gray-100 rounded px-3 py-1">
+                <span className="mr-2 font-medium">{cat.name}</span>
+                <span className="text-xs text-gray-400 mr-2">({cat.slug})</span>
+                <Button size="sm" variant="destructive" onClick={() => handleDeleteCategory(cat.id)} disabled={categoryLoading}>
+                  Supprimer
+                </Button>
+              </div>
+            ))}
+            {categories.length === 0 && <span className="text-gray-400">Aucune catégorie</span>}
+          </div>
+        </div>
 
         {/* Product Management Section */}
         <div className="mt-12">
@@ -563,7 +687,9 @@ export default function AdminPage() {
                     <p className="text-sm text-gray-600 line-clamp-2">{product.description}</p>
                     <div className="flex justify-between items-center">
                       <span className="font-bold text-green-600">{formatPrice(product.price)}</span>
-                      <Badge key={product.id} variant="secondary">{product.category}</Badge>
+                      <Badge key={product.id} variant="secondary">
+                        {categories.find(c => c.id === product.categoryId)?.name || "?"}
+                      </Badge>
                     </div>
                     <div className="flex justify-end space-x-2 pt-2">
                       <Button
@@ -613,13 +739,11 @@ export default function AdminPage() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <ProductForm
-                product={editingProduct || undefined}
+                categories={categories}
                 onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}
-                onCancel={() => {
-                  setShowProductForm(false)
-                  setEditingProduct(null)
-                }}
+                product={editingProduct}
                 loading={productLoading}
+                onClose={() => setShowProductForm(false)}
               />
             </div>
           </div>

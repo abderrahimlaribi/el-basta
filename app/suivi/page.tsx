@@ -30,6 +30,9 @@ interface Order {
   estimatedTime?: string
   createdAt: string | Date
   updatedAt: string | Date
+  customerName?: string
+  customerPhone?: string
+  customerNotes?: string
 }
 
 export default function TrackingPage() {
@@ -199,6 +202,27 @@ export default function TrackingPage() {
               </CardContent>
             </Card>
 
+            {/* Informations client */}
+            <Card className="shadow-lg border-0">
+              <CardHeader>
+                <CardTitle className="text-xl font-accent text-amber-900">Informations client</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex flex-col gap-2 text-amber-900 font-body">
+                  <div><span className="font-semibold">Nom :</span> {order.customerName || <span className="text-gray-400">-</span>}</div>
+                  <div>
+                    <span className="font-semibold">Téléphone :</span> {order.customerPhone ? (
+                      <a href={`tel:${order.customerPhone}`} className="text-blue-600 underline ml-1">{order.customerPhone}</a>
+                    ) : <span className="text-gray-400">-</span>}
+                  </div>
+                  <div><span className="font-semibold">Adresse :</span> {order.deliveryAddress || <span className="text-gray-400">-</span>}</div>
+                  {order.customerNotes && (
+                    <div><span className="font-semibold">Notes :</span> {order.customerNotes}</div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Delivery Address */}
             <Card className="shadow-lg border-0">
               <CardContent className="p-6">
@@ -206,7 +230,7 @@ export default function TrackingPage() {
                   <MapPin className="w-6 h-6 text-blue-600 mt-1" />
                   <div>
                     <p className="font-semibold text-blue-800 font-body">Adresse de livraison</p>
-                    <p className="text-blue-700 font-body mt-1">{order.deliveryAddress}</p>
+                    <a className="text-blue-700 font-body mt-1" href={order.deliveryAddress} >{order.deliveryAddress}</a>
                   </div>
                 </div>
               </CardContent>

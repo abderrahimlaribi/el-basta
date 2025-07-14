@@ -13,11 +13,12 @@ export async function PUT(
   try {
     const { id } = params
     const body = await request.json()
-    const { name, description, price, category, imageUrl } = body
+    // In PUT, expect categoryId instead of category
+    const { name, description, price, categoryId, imageUrl } = body
 
-    console.log(`🔄 Updating product ${id}:`, { name, price, category })
+    console.log(`🔄 Updating product ${id}:`, { name, price, categoryId })
 
-    if (!name || !description || !price || !category || !imageUrl) {
+    if (!name || !description || !price || !categoryId || !imageUrl) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -28,7 +29,7 @@ export async function PUT(
       name,
       description,
       price: Number(price),
-      category,
+      categoryId,
       imageUrl,
       updatedAt: serverTimestamp(),
     }

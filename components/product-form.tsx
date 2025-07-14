@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Upload, X, Loader2 } from "lucide-react"
 import Image from "next/image"
 
+interface Category { id: string; name: string; slug: string }
 interface Product {
   id?: string
   name: string
@@ -20,27 +21,19 @@ interface Product {
 }
 
 interface ProductFormProps {
-  product?: Product
-  onSubmit: (product: Omit<Product, "id">) => Promise<void>
-  onCancel: () => void
+  product?: any
+  onSubmit: (product: any) => Promise<void>
+  onClose: () => void
   loading?: boolean
+  categories: Category[]
 }
 
-const categories = [
-  "Jus Naturels",
-  "Thés Premium",
-  "Crêpes Artisanales",
-  "Douceurs",
-  "Cafés",
-  "Smoothies",
-]
-
-export function ProductForm({ product, onSubmit, onCancel, loading }: ProductFormProps) {
+export function ProductForm({ product, onSubmit, onClose, loading, categories }: ProductFormProps) {
   const [formData, setFormData] = useState({
     name: product?.name || "",
     description: product?.description || "",
     price: product?.price || 0,
-    category: product?.category || "",
+    categoryId: product?.categoryId || "",
     imageUrl: product?.imageUrl || "",
   })
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -79,7 +72,7 @@ export function ProductForm({ product, onSubmit, onCancel, loading }: ProductFor
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!formData.name || !formData.description || !formData.price || !formData.category) {
+    if (!formData.name || !formData.description || !formData.price || !formData.categoryId) {
       alert("Please fill in all required fields")
       return
     }
@@ -98,7 +91,7 @@ export function ProductForm({ product, onSubmit, onCancel, loading }: ProductFor
         name: formData.name,
         description: formData.description,
         price: Number(formData.price),
-        category: formData.category,
+        categoryId: formData.categoryId,
         imageUrl,
       })
     } catch (error) {
@@ -220,16 +213,16 @@ export function ProductForm({ product, onSubmit, onCancel, loading }: ProductFor
             <div className="space-y-2">
               <Label htmlFor="category">Catégorie *</Label>
               <Select
-                value={formData.category}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+                value={formData.categoryId}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, categoryId: value }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner une catégorie" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -239,7 +232,7 @@ export function ProductForm({ product, onSubmit, onCancel, loading }: ProductFor
 
           {/* Action Buttons */}
           <div className="flex justify-end space-x-2">
-            <Button type="button" variant="outline" onClick={onCancel}>
+            <Button type="button" variant="outline" onClick={onClose}>
               Annuler
             </Button>
             <Button type="submit" disabled={loading || uploading}>
