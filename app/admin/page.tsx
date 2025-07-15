@@ -55,7 +55,8 @@ interface Product {
   name: string
   description: string
   price: number
-  category: string
+  category?: string
+  categoryId?: string
   imageUrl: string
   createdAt: Date
   updatedAt: Date
@@ -761,7 +762,7 @@ export default function AdminPage() {
         </Dialog>
 
         {/* Category Management Section */}
-        <div className="mb-12">
+        <div className="my-12">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Gestion des Catégories</h2>
           <p className="text-gray-600 mb-4">Ajoutez, supprimez et gérez vos catégories de produits</p>
           <div className="flex gap-2 mb-4">
@@ -828,13 +829,7 @@ export default function AdminPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {products.map(product => (
                 <div key={product.id} className={`relative border rounded-lg p-3 flex flex-col items-center ${promotedProducts.includes(product.id) ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white'}`}>
-                  <div className="w-20 h-20 mb-2 flex items-center justify-center">
-                    {product.imageUrl ? (
-                      <Image src={product.imageUrl} alt={product.name} width={80} height={80} className="object-cover rounded" />
-                    ) : (
-                      <Package className="h-10 w-10 text-gray-400" />
-                    )}
-                  </div>
+                  {/* Removed product image display */}
                   <div className="text-center mb-2">
                     <div className="font-semibold text-amber-900 text-base truncate w-32">{product.name}</div>
                     <div className="text-xs text-gray-500">{product.price} DA</div>
@@ -923,51 +918,8 @@ export default function AdminPage() {
                           <span className="font-bold text-green-600">{product.price} DA</span>
                         )}
                         <Badge key={product.id} variant="secondary">
-                          {categories.find(c => c.id === product.category)?.name || "?"}
+                          {categories.find(c => c.id === (product.categoryId || product.category))?.name || "Sans catégorie"}
                         </Badge>
-                      </div>
-                      {/* Status Dropdown */}
-                      <div className="flex items-center gap-2 mt-2">
-                        <label className="text-xs text-gray-500">Statut:</label>
-                        <select
-                          value={currentStatus}
-                          onChange={async (e) => {
-                            const newStatus = e.target.value === 'none' ? null : e.target.value
-                            let update: any = { status: newStatus }
-                            if (newStatus !== 'promotion') update.discountPrice = null
-                            await fetch(`/api/products/${product.id}`, {
-                              method: 'PUT',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify(update)
-                            })
-                            await fetchProducts()
-                          }}
-                          className="border rounded px-2 py-1 text-xs"
-                        >
-                          {PRODUCT_STATUS.map(opt => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                          ))}
-                        </select>
-                        {/* Discounted price input if promotion */}
-                        {currentStatus === 'promotion' && (
-                          <input
-                            type="number"
-                            min={1}
-                            placeholder="Prix promo"
-                            value={product.discountPrice ?? ''}
-                            onChange={async (e) => {
-                              const val = parseInt(e.target.value, 10)
-                              if (!val || val >= product.price) return
-                              await fetch(`/api/products/${product.id}`, {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ discountPrice: val })
-                              })
-                              await fetchProducts()
-                            }}
-                            className="border rounded px-2 py-1 text-xs w-20 ml-2"
-                          />
-                        )}
                       </div>
                       <div className="flex justify-end space-x-2 pt-2">
                         <Button

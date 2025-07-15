@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator"
 import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft, MapPin, Truck, Store } from "lucide-react"
 import Link from "next/link"
 import { useCartStore } from "@/lib/cart-store"
+import type { CartItem } from "@/lib/cart-store"
 import Image from "next/image"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { AlertTriangle } from "lucide-react"
@@ -33,7 +34,7 @@ export default function CartPage() {
   const [locationError, setLocationError] = useState("")
   const [locationLoading, setLocationLoading] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [itemToDelete, setItemToDelete] = useState(null)
+  const [itemToDelete, setItemToDelete] = useState<CartItem | null>(null)
   const [serviceFees, setServiceFees] = useState(0)
 
   useEffect(() => {
@@ -234,9 +235,9 @@ export default function CartPage() {
                     <Image
                       src={item.image || "/placeholder.svg"}
                       alt={item.name}
-                      width={50}
-                      height={50}
-                      className="rounded object-cover flex-shrink-0 mb-2 sm:mb-0"
+                      width={90}
+                      height={90}
+                      className="rounded object-cover flex-shrink-0 mb-2 sm:mb-0 shadow-md border border-gray-200"
                     />
                     <div className="flex-1 w-full">
                       <h3 className="font-semibold text-amber-900 font-body text-base sm:text-lg">{item.name}</h3>
@@ -345,8 +346,8 @@ export default function CartPage() {
 
                 <div className="space-y-3">
                   <Label className="text-amber-900 font-body font-semibold">Mode de réception *</Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <label className="relative cursor-pointer group">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label className="relative cursor-pointer group block">
                       <input
                         type="radio"
                         name="deliveryMethod"
@@ -355,37 +356,36 @@ export default function CartPage() {
                         onChange={() => setDeliveryMethod('livraison')}
                         className="sr-only"
                       />
-                      <div className={`h-32 p-4 rounded-xl border-2 transition-all duration-200 group-hover:shadow-lg ${
-                        deliveryMethod === 'livraison' 
+                      <div className={`min-h-[7rem] w-full p-4 rounded-xl border-2 transition-all duration-200 group-hover:shadow-lg flex flex-col justify-center
+                        ${deliveryMethod === 'livraison' 
                           ? 'border-green-500 bg-green-50 shadow-md' 
                           : 'border-gray-200 bg-white hover:border-green-300'
-                      }`}>
+                        }`}>
                         <div className="flex items-center gap-3 h-full">
-                          <div className={`p-2 rounded-lg flex-shrink-0 ${
-                            deliveryMethod === 'livraison' 
+                          <div className={`p-2 rounded-lg flex-shrink-0
+                            ${deliveryMethod === 'livraison' 
                               ? 'bg-green-500 text-white' 
                               : 'bg-gray-100 text-gray-600'
-                          }`}>
-                            <Truck className="w-5 h-5" />
+                            }`}>
+                            <Truck className="w-6 h-6 md:w-7 md:h-7" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-amber-900 font-body text-base">Livraison à domicile</div>
+                            <div className="font-semibold text-amber-900 font-body text-base md:text-lg">Livraison à domicile</div>
                             <div className="text-amber-700 font-body text-sm mt-1">Livraison directe chez vous</div>
                           </div>
-                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                            deliveryMethod === 'livraison' 
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0
+                            ${deliveryMethod === 'livraison' 
                               ? 'border-green-500 bg-green-500' 
                               : 'border-gray-300'
-                          }`}>
+                            }`}>
                             {deliveryMethod === 'livraison' && (
-                              <div className="w-2 h-2 rounded-full bg-white"></div>
+                              <div className="w-2.5 h-2.5 rounded-full bg-white"></div>
                             )}
                           </div>
                         </div>
                       </div>
                     </label>
-                    
-                    <label className="relative cursor-pointer group">
+                    <label className="relative cursor-pointer group block">
                       <input
                         type="radio"
                         name="deliveryMethod"
@@ -394,30 +394,30 @@ export default function CartPage() {
                         onChange={() => setDeliveryMethod('surplace')}
                         className="sr-only"
                       />
-                      <div className={`h-32 p-4 rounded-xl border-2 transition-all duration-200 group-hover:shadow-lg ${
-                        deliveryMethod === 'surplace' 
+                      <div className={`min-h-[7rem] w-full p-4 rounded-xl border-2 transition-all duration-200 group-hover:shadow-lg flex flex-col justify-center
+                        ${deliveryMethod === 'surplace' 
                           ? 'border-green-500 bg-green-50 shadow-md' 
                           : 'border-gray-200 bg-white hover:border-green-300'
-                      }`}>
+                        }`}>
                         <div className="flex items-center gap-3 h-full">
-                          <div className={`p-2 rounded-lg flex-shrink-0 ${
-                            deliveryMethod === 'surplace' 
+                          <div className={`p-2 rounded-lg flex-shrink-0
+                            ${deliveryMethod === 'surplace' 
                               ? 'bg-green-500 text-white' 
                               : 'bg-gray-100 text-gray-600'
-                          }`}>
-                            <Store className="w-5 h-5" />
+                            }`}>
+                            <Store className="w-6 h-6 md:w-7 md:h-7" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-amber-900 font-body text-base">Commande sur place</div>
+                            <div className="font-semibold text-amber-900 font-body text-base md:text-lg">Commande sur place</div>
                             <div className="text-amber-700 font-body text-sm mt-1">À retirer chez ElBasta</div>
                           </div>
-                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                            deliveryMethod === 'surplace' 
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0
+                            ${deliveryMethod === 'surplace' 
                               ? 'border-green-500 bg-green-500' 
                               : 'border-gray-300'
-                          }`}>
+                            }`}>
                             {deliveryMethod === 'surplace' && (
-                              <div className="w-2 h-2 rounded-full bg-white"></div>
+                              <div className="w-2.5 h-2.5 rounded-full bg-white"></div>
                             )}
                           </div>
                         </div>
