@@ -42,9 +42,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const orders = await getAllOrders()
+    const { searchParams } = new URL(request.url)
+    const date = searchParams.get('date') || undefined
+    const orders = await getAllOrders(date)
 
     // Convert dates to ISO strings for JSON serialization
     const serializedOrders = orders.map((order) => ({

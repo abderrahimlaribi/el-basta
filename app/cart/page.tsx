@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,10 +8,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
-import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft, MapPin } from "lucide-react"
+import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft, MapPin, Truck, Store } from "lucide-react"
 import Link from "next/link"
 import { useCartStore } from "@/lib/cart-store"
 import Image from "next/image"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { AlertTriangle } from "lucide-react"
 
 export default function CartPage() {
   const router = useRouter()
@@ -30,6 +32,16 @@ export default function CartPage() {
   const [locationUrl, setLocationUrl] = useState("")
   const [locationError, setLocationError] = useState("")
   const [locationLoading, setLocationLoading] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [itemToDelete, setItemToDelete] = useState(null)
+  const [serviceFees, setServiceFees] = useState(0)
+
+  useEffect(() => {
+    fetch('/api/config')
+      .then(res => res.json())
+      .then(data => setServiceFees(data.serviceFees || 0))
+      .catch(() => setServiceFees(0))
+  }, [])
 
   const handleQuantityChange = (id: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -92,6 +104,8 @@ export default function CartPage() {
     termsAccepted &&
     !loading
 
+  const totalWithFees = getTotalPrice() + serviceFees
+
   const handleSubmitOrder = async () => {
     if (!termsAccepted) {
       setValidationError("terms")
@@ -117,7 +131,8 @@ export default function CartPage() {
           image: item.image,
         })),
         deliveryAddress: deliveryMethod === 'surplace' ? 'Sur place' : locationUrl,
-        totalPrice: getTotalPrice(),
+        totalPrice: totalWithFees,
+        serviceFees,
         customerName: customerInfo.name,
         customerPhone: customerInfo.phone,
         customerNotes: customerInfo.notes,
@@ -142,16 +157,25 @@ export default function CartPage() {
         .map((item) => `• ${item.name} x${item.quantity} - ${(item.price * item.quantity).toFixed(0)} DA`)
         .join("\n")
       const addressText = deliveryMethod === 'surplace' ? 'Sur place (à retirer chez ElBasta)' : (locationUrl ? locationUrl : "[Adresse non fournie]")
-      const message = `🛍️ *Nouvelle Commande - ElBasta*\n\n🆔 *Code de commande: ${data.trackingId}*\n\n📋 *Détails de la commande:*\n${orderDetails}\n\n💰 *Total: ${getTotalPrice().toFixed(0)} DA*\n\n👤 *Informations client:*\n• Nom: ${customerInfo.name}\n• Téléphone: ${customerInfo.phone}\n• Adresse: ${addressText}\n${customerInfo.notes ? `• Notes: ${customerInfo.notes}` : ""}\n\n🔍 *ID de suivi: ${data.trackingId}*\n📱 *Lien de suivi: ${typeof window !== "undefined" ? window.location.origin : ""}/suivi?tracking=${data.trackingId}*\n\nMerci pour votre commande ! 🙏`
+      const message = `🛍️ *Nouvelle Commande - ElBasta*\n\n🆔 *Code de commande: ${data.trackingId}*\n\n📋 *Détails de la commande:*\n${orderDetails}\n\n➕ *Frais de service:* ${serviceFees} DA\n💰 *Total: ${totalWithFees.toFixed(0)} DA*\n\n👤 *Informations client:*\n• Nom: ${customerInfo.name}\n• Téléphone: ${customerInfo.phone}\n• Adresse: ${addressText}\n${customerInfo.notes ? `• Notes: ${customerInfo.notes}` : ""}\n\n🔍 *ID de suivi: ${data.trackingId}*\n📱 *Lien de suivi: ${typeof window !== "undefined" ? window.location.origin : ""}/suivi?tracking=${data.trackingId}*\n\nMerci pour votre commande ! 🙏`
 
       const whatsappUrl = `https://wa.me/213665258642?text=${encodeURIComponent(message)}`
 
-      // Clear cart and redirect
+      // Clear cart
       clearCart()
+
+      // Detect mobile
+      const isMobile = typeof window !== 'undefined' && /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(window.navigator.userAgent)
       if (typeof window !== "undefined") {
-        window.open(whatsappUrl, "_blank")
+        if (isMobile) {
+          window.location.href = whatsappUrl
+        } else {
+          window.open(whatsappUrl, "_blank")
+        }
+        setTimeout(() => {
+          router.push(`/suivi?tracking=${data.trackingId}`)
+        }, 2500)
       }
-      router.push(`/suivi?tracking=${data.trackingId}`)
     } catch (error) {
       console.error("Error submitting order:", error)
       setValidationError("Erreur lors de la commande. Veuillez réessayer.")
@@ -241,9 +265,8 @@ export default function CartPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          if (window.confirm("Voulez-vous vraiment supprimer cet article ?")) {
-                            removeItem(item.id)
-                          }
+                          setItemToDelete(item)
+                          setDeleteDialogOpen(true)
                         }}
                         className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
                       >
@@ -254,10 +277,13 @@ export default function CartPage() {
                 ))}
 
                 <Separator />
-
+                <div className="flex justify-between items-center text-base font-body">
+                  <span className="text-amber-900">Frais de service</span>
+                  <span className="text-green-700">{serviceFees} DA</span>
+                </div>
                 <div className="flex justify-between items-center text-xl font-bold">
                   <span className="text-amber-900 font-body">Total</span>
-                  <span className="text-green-600 font-body">{formatPrice(getTotalPrice())}</span>
+                  <span className="text-green-600 font-body">{totalWithFees} DA</span>
                 </div>
               </CardContent>
             </Card>
@@ -317,30 +343,85 @@ export default function CartPage() {
                   )}
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label className="text-amber-900 font-body font-semibold">Mode de réception *</Label>
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <label className="flex items-center gap-2 font-body">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label className="relative cursor-pointer group">
                       <input
                         type="radio"
                         name="deliveryMethod"
                         value="livraison"
                         checked={deliveryMethod === 'livraison'}
                         onChange={() => setDeliveryMethod('livraison')}
-                        className="accent-green-600"
+                        className="sr-only"
                       />
-                      Livraison à domicile
+                      <div className={`h-32 p-4 rounded-xl border-2 transition-all duration-200 group-hover:shadow-lg ${
+                        deliveryMethod === 'livraison' 
+                          ? 'border-green-500 bg-green-50 shadow-md' 
+                          : 'border-gray-200 bg-white hover:border-green-300'
+                      }`}>
+                        <div className="flex items-center gap-3 h-full">
+                          <div className={`p-2 rounded-lg flex-shrink-0 ${
+                            deliveryMethod === 'livraison' 
+                              ? 'bg-green-500 text-white' 
+                              : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            <Truck className="w-5 h-5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-amber-900 font-body text-base">Livraison à domicile</div>
+                            <div className="text-amber-700 font-body text-sm mt-1">Livraison directe chez vous</div>
+                          </div>
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                            deliveryMethod === 'livraison' 
+                              ? 'border-green-500 bg-green-500' 
+                              : 'border-gray-300'
+                          }`}>
+                            {deliveryMethod === 'livraison' && (
+                              <div className="w-2 h-2 rounded-full bg-white"></div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </label>
-                    <label className="flex items-center gap-2 font-body">
+                    
+                    <label className="relative cursor-pointer group">
                       <input
                         type="radio"
                         name="deliveryMethod"
                         value="surplace"
                         checked={deliveryMethod === 'surplace'}
                         onChange={() => setDeliveryMethod('surplace')}
-                        className="accent-green-600"
+                        className="sr-only"
                       />
-                      Commande sur place (à retirer chez ElBasta)
+                      <div className={`h-32 p-4 rounded-xl border-2 transition-all duration-200 group-hover:shadow-lg ${
+                        deliveryMethod === 'surplace' 
+                          ? 'border-green-500 bg-green-50 shadow-md' 
+                          : 'border-gray-200 bg-white hover:border-green-300'
+                      }`}>
+                        <div className="flex items-center gap-3 h-full">
+                          <div className={`p-2 rounded-lg flex-shrink-0 ${
+                            deliveryMethod === 'surplace' 
+                              ? 'bg-green-500 text-white' 
+                              : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            <Store className="w-5 h-5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-amber-900 font-body text-base">Commande sur place</div>
+                            <div className="text-amber-700 font-body text-sm mt-1">À retirer chez ElBasta</div>
+                          </div>
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                            deliveryMethod === 'surplace' 
+                              ? 'border-green-500 bg-green-500' 
+                              : 'border-gray-300'
+                          }`}>
+                            {deliveryMethod === 'surplace' && (
+                              <div className="w-2 h-2 rounded-full bg-white"></div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </label>
                   </div>
                 </div>
@@ -420,6 +501,19 @@ export default function CartPage() {
           </div>
         </div>
       </div>
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="max-w-sm rounded-xl p-6">
+          <div className="flex flex-col items-center text-center">
+            <AlertTriangle className="w-12 h-12 text-red-500 mb-2" />
+            <h3 className="text-lg font-bold text-amber-900 mb-2">Confirmer la suppression</h3>
+            <p className="text-amber-800 mb-4">Voulez-vous vraiment supprimer <span className="font-semibold">{itemToDelete?.name}</span> du panier ? Cette action est irréversible.</p>
+            <div className="flex gap-4 mt-2">
+              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} className="rounded-full px-6">Annuler</Button>
+              <Button variant="destructive" onClick={() => { if (itemToDelete) { removeItem(itemToDelete.id); setDeleteDialogOpen(false); setItemToDelete(null); } }} className="rounded-full px-6">Supprimer</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

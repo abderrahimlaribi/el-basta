@@ -18,6 +18,8 @@ interface Product {
   price: number
   category: string
   imageUrl: string
+  status?: 'new' | 'promotion' | null
+  discountPrice?: number
 }
 
 interface ProductFormProps {
@@ -35,6 +37,8 @@ export function ProductForm({ product, onSubmit, onClose, loading, categories }:
     price: product?.price || 0,
     categoryId: product?.categoryId || "",
     imageUrl: product?.imageUrl || "",
+    status: product?.status ?? 'none',
+    discountPrice: product?.discountPrice ?? '',
   })
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState(product?.imageUrl || "")
@@ -93,6 +97,8 @@ export function ProductForm({ product, onSubmit, onClose, loading, categories }:
         price: Number(formData.price),
         categoryId: formData.categoryId,
         imageUrl,
+        status: formData.status === 'none' ? null : formData.status,
+        discountPrice: formData.status === 'promotion' ? Number(formData.discountPrice) : undefined,
       })
     } catch (error) {
       console.error("Error submitting product:", error)
@@ -229,6 +235,36 @@ export function ProductForm({ product, onSubmit, onClose, loading, categories }:
               </Select>
             </div>
           </div>
+
+          {/* Status Dropdown */}
+          <div className="space-y-2">
+            <Label htmlFor="status">Statut</Label>
+            <select
+              id="status"
+              value={formData.status}
+              onChange={e => setFormData(prev => ({ ...prev, status: e.target.value }))}
+              className="border rounded px-2 py-1 w-full"
+            >
+              <option value="none">Aucun</option>
+              <option value="new">Nouveau</option>
+              <option value="promotion">Promotion</option>
+            </select>
+          </div>
+          {/* Discounted price input if promotion */}
+          {formData.status === 'promotion' && (
+            <div className="space-y-2">
+              <Label htmlFor="discountPrice">Prix promotionnel</Label>
+              <Input
+                id="discountPrice"
+                type="number"
+                min={1}
+                value={formData.discountPrice}
+                onChange={e => setFormData(prev => ({ ...prev, discountPrice: e.target.value }))}
+                placeholder="Prix promotionnel"
+                required
+              />
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex justify-end space-x-2">

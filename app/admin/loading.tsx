@@ -8,7 +8,12 @@ export default function Loading() {
         {/* Header Skeleton */}
         <div className="mb-8">
           <Skeleton className="h-8 w-64 mb-2" />
-          <Skeleton className="h-4 w-96" />
+          <Skeleton className="h-4 w-96 mb-4" />
+          <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-end mb-4">
+            <Skeleton className="h-8 w-36" />
+            <Skeleton className="h-8 w-36" />
+            <Skeleton className="h-8 w-28" />
+          </div>
         </div>
 
         {/* Analytics Cards Skeleton */}

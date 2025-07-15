@@ -183,3 +183,16 @@ export async function getProductsByCategory(categoryId: string) {
   const snapshot = await getDocs(query(collection(db, "products"), where("categoryId", "==", categoryId)))
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
 }
+
+export interface Product {
+  id: string
+  name: string
+  description: string
+  price: number
+  imageUrl: string
+  categoryId: string
+  createdAt: Date
+  updatedAt: Date
+  status?: 'new' | 'promotion' | null
+  discountPrice?: number
+}

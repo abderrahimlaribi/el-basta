@@ -17,8 +17,11 @@ import {
   MessageCircle,
   Package,
   Loader2,
+  Sparkles,
+  Percent,
+  Clock,
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { CartIcon } from "@/components/cart-icon"
 import { MenuItemCard } from "@/components/menu-item-card"
 import { MobileHeader } from "@/components/mobile-header"
@@ -36,20 +39,27 @@ export default function TeaRoomLanding() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [promotedProducts, setPromotedProducts] = useState<Product[]>([])
+  const promoSliderRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
       setError(null)
       try {
-        const [catRes, prodRes] = await Promise.all([
+        const [catRes, prodRes, promoRes] = await Promise.all([
           fetch("/api/categories"),
-          fetch("/api/products")
+          fetch("/api/products"),
+          fetch("/api/config?type=promotedProducts")
         ])
         const catData = await catRes.json()
         const prodData = await prodRes.json()
+        const promoData = await promoRes.json()
         setCategories(catData.categories || [])
         setProducts(prodData.products || [])
+        // Find promoted products by ID
+        const promoIds = promoData.promotedProducts || []
+        setPromotedProducts((prodData.products || []).filter((p: Product) => promoIds.includes(p.id)))
       } catch (err) {
         setError("Erreur lors du chargement du menu. Veuillez réessayer.")
       } finally {
@@ -81,6 +91,15 @@ export default function TeaRoomLanding() {
 
   const prevImage = () => {
     setCurrentImageIndex((prev) => (prev - 1 + galleryImages.length) % galleryImages.length)
+  }
+
+  const scrollPromo = (dir: 'left' | 'right') => {
+    if (!promoSliderRef.current) return
+    const cardWidth = promoSliderRef.current.querySelector('div[data-card]')?.clientWidth || 320
+    promoSliderRef.current.scrollBy({
+      left: dir === 'left' ? -cardWidth - 24 : cardWidth + 24,
+      behavior: 'smooth',
+    })
   }
 
   return (
@@ -190,6 +209,70 @@ export default function TeaRoomLanding() {
         </div>
       </section>
 
+      {/* Promotion / New Products Section */}
+      {promotedProducts.length > 0 && (
+        <section className="py-20 px-6 bg-gradient-to-br from-green-50 to-amber-50 border-y-4 border-green-400/30 shadow-xl">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center gap-4 mb-10">
+              <Sparkles className="w-10 h-10 text-green-600" />
+              <h2 className="text-4xl md:text-5xl font-accent text-amber-900">Promotion / Nouveautés</h2>
+            </div>
+            <div className="relative">
+              <button
+                aria-label="Précédent"
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white rounded-full p-2 shadow-lg transition-all duration-300"
+                onClick={() => scrollPromo('left')}
+                style={{ display: promotedProducts.length > 1 ? 'block' : 'none' }}
+              >
+                <ChevronLeft className="w-6 h-6 text-amber-900" />
+              </button>
+              <div
+                ref={promoSliderRef}
+                className="flex gap-6 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-4"
+                style={{ scrollPaddingLeft: 24, scrollPaddingRight: 24 }}
+              >
+                {promotedProducts.map(item => (
+                  <div
+                    key={item.id}
+                    data-card
+                    className="min-w-[320px] max-w-xs w-full snap-center flex-shrink-0"
+                  >
+                    <MenuItemCard
+                      id={item.id}
+                      name={item.name}
+                      description={item.description}
+                      price={item.price}
+                      image={item.imageUrl}
+                      category={categories.find(c => c.id === item.categoryId)?.name || ""}
+                      status={item.status}
+                      discountPrice={item.discountPrice}
+                    />
+                    {/* Highlight badges for discount, new, limited */}
+                    {item.discount && (
+                      <span className="absolute top-4 left-4 z-10"><Badge className="bg-red-600 text-white flex items-center gap-1"><Percent className="w-4 h-4" /> Promo</Badge></span>
+                    )}
+                    {item.isNew && (
+                      <span className="absolute top-4 right-4 z-10"><Badge className="bg-green-600 text-white flex items-center gap-1"><Sparkles className="w-4 h-4" /> Nouveau</Badge></span>
+                    )}
+                    {item.isLimited && (
+                      <span className="absolute bottom-4 left-4 z-10"><Badge className="bg-amber-500 text-white flex items-center gap-1"><Clock className="w-4 h-4" /> Limité</Badge></span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <button
+                aria-label="Suivant"
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white rounded-full p-2 shadow-lg transition-all duration-300"
+                onClick={() => scrollPromo('right')}
+                style={{ display: promotedProducts.length > 1 ? 'block' : 'none' }}
+              >
+                <ChevronRight className="w-6 h-6 text-amber-900" />
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Menu Section */}
       <section id="menu" className="py-20 px-6 bg-white">
         <div className="max-w-7xl mx-auto">
@@ -242,6 +325,8 @@ export default function TeaRoomLanding() {
                       price={item.price}
                       image={item.imageUrl}
                       category={cat.name}
+                      status={item.status}
+                      discountPrice={item.discountPrice}
                     />
                   ))}
                 </div>

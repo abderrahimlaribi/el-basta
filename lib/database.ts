@@ -15,6 +15,8 @@ export interface Product {
   category: string
   createdAt: Date
   updatedAt: Date
+  status?: 'new' | 'promotion' | null
+  discountPrice?: number
 }
 
 // Mock products for fallback
@@ -28,6 +30,8 @@ const mockProducts: Product[] = [
     category: "Jus Naturels",
     createdAt: new Date(),
     updatedAt: new Date(),
+    status: null,
+    discountPrice: undefined,
   },
   {
     id: "juice-2",
@@ -38,6 +42,8 @@ const mockProducts: Product[] = [
     category: "Jus Naturels",
     createdAt: new Date(),
     updatedAt: new Date(),
+    status: null,
+    discountPrice: undefined,
   },
   {
     id: "juice-3",
@@ -48,6 +54,8 @@ const mockProducts: Product[] = [
     category: "Jus Naturels",
     createdAt: new Date(),
     updatedAt: new Date(),
+    status: null,
+    discountPrice: undefined,
   },
   {
     id: "crepe-1",
@@ -58,6 +66,8 @@ const mockProducts: Product[] = [
     category: "Crêpes",
     createdAt: new Date(),
     updatedAt: new Date(),
+    status: null,
+    discountPrice: undefined,
   },
   {
     id: "crepe-2",
@@ -68,6 +78,8 @@ const mockProducts: Product[] = [
     category: "Crêpes",
     createdAt: new Date(),
     updatedAt: new Date(),
+    status: null,
+    discountPrice: undefined,
   },
   {
     id: "crepe-3",
@@ -78,6 +90,8 @@ const mockProducts: Product[] = [
     category: "Crêpes",
     createdAt: new Date(),
     updatedAt: new Date(),
+    status: null,
+    discountPrice: undefined,
   },
   {
     id: "cappuccino-1",
@@ -88,6 +102,8 @@ const mockProducts: Product[] = [
     category: "Cappuccinos",
     createdAt: new Date(),
     updatedAt: new Date(),
+    status: null,
+    discountPrice: undefined,
   },
   {
     id: "cappuccino-2",
@@ -98,6 +114,8 @@ const mockProducts: Product[] = [
     category: "Cappuccinos",
     createdAt: new Date(),
     updatedAt: new Date(),
+    status: null,
+    discountPrice: undefined,
   },
   {
     id: "cappuccino-3",
@@ -108,6 +126,8 @@ const mockProducts: Product[] = [
     category: "Cappuccinos",
     createdAt: new Date(),
     updatedAt: new Date(),
+    status: null,
+    discountPrice: undefined,
   },
   {
     id: "sweet-1",
@@ -118,6 +138,8 @@ const mockProducts: Product[] = [
     category: "Douceurs",
     createdAt: new Date(),
     updatedAt: new Date(),
+    status: null,
+    discountPrice: undefined,
   },
   {
     id: "sweet-2",
@@ -128,6 +150,8 @@ const mockProducts: Product[] = [
     category: "Douceurs",
     createdAt: new Date(),
     updatedAt: new Date(),
+    status: null,
+    discountPrice: undefined,
   },
   {
     id: "sweet-3",
@@ -138,6 +162,8 @@ const mockProducts: Product[] = [
     category: "Douceurs",
     createdAt: new Date(),
     updatedAt: new Date(),
+    status: null,
+    discountPrice: undefined,
   },
 ]
 
@@ -272,17 +298,33 @@ export async function getOrderByTrackingId(trackingId: string): Promise<Order | 
 }
 
 // Get all orders (for admin)
-export async function getAllOrders(): Promise<Order[]> {
-  console.log("📋 Fetching all orders...")
+export async function getAllOrders(date?: string): Promise<Order[]> {
+  console.log("📋 Fetching all orders...", date ? `for date: ${date}` : "");
+
+  // Helper to get start/end of day
+  function getDayRange(dateStr: string) {
+    const start = new Date(dateStr + 'T00:00:00.000Z');
+    const end = new Date(dateStr + 'T23:59:59.999Z');
+    return { start, end };
+  }
 
   if (isFirebaseConfigured() && db) {
     try {
-      console.log("🔥 Querying Firebase for all orders...")
-      const q = query(collection(db, "orders"), orderBy("createdAt", "desc"))
-      const querySnapshot = await getDocs(q)
-
+      let q;
+      if (date) {
+        const { start, end } = getDayRange(date);
+        q = query(
+          collection(db, "orders"),
+          where("createdAt", ">=", start),
+          where("createdAt", "<=", end),
+          orderBy("createdAt", "desc")
+        );
+      } else {
+        q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
+      }
+      const querySnapshot = await getDocs(q);
       const orders = querySnapshot.docs.map((docData) => {
-        const data = docData.data()
+        const data = docData.data();
         return {
           id: docData.id,
           trackingId: data.trackingId,
@@ -296,28 +338,27 @@ export async function getAllOrders(): Promise<Order[]> {
           customerName: data.customerName,
           customerPhone: data.customerPhone,
           customerNotes: data.customerNotes,
-        }
-      })
-
-      console.log(`✅ Retrieved ${orders.length} orders from Firebase`)
-      return orders
+        };
+      });
+      console.log(`✅ Retrieved ${orders.length} orders from Firebase`);
+      return orders;
     } catch (error) {
-      console.error("❌ Error getting orders from Firebase:", error)
-      console.error("   Error details:", {
-        message: error instanceof Error ? error.message : "Unknown error",
-        code: (error as any)?.code || "No error code",
-        stack: error instanceof Error ? error.stack : "No stack trace"
-      })
-      console.warn("🔄 Falling back to mock storage...")
+      console.error("❌ Error getting orders from Firebase:", error);
+      console.warn("🔄 Falling back to mock storage...");
     }
   } else {
-    console.warn("⚠️ Firebase not available - using mock storage")
+    console.warn("⚠️ Firebase not available - using mock storage");
   }
 
   // Fall back to mock storage
-  const mockOrdersSorted = [...mockOrders].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-  console.log(`✅ Retrieved ${mockOrdersSorted.length} orders from mock storage`)
-  return mockOrdersSorted
+  let filtered = [...mockOrders];
+  if (date) {
+    const { start, end } = getDayRange(date);
+    filtered = filtered.filter(order => order.createdAt >= start && order.createdAt <= end);
+  }
+  const mockOrdersSorted = filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  console.log(`✅ Retrieved ${mockOrdersSorted.length} orders from mock storage`);
+  return mockOrdersSorted;
 }
 
 // Update order status

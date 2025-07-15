@@ -44,6 +44,8 @@ export async function GET() {
           imageUrl: data.imageUrl,
           createdAt: data.createdAt?.toDate() || new Date(),
           updatedAt: data.updatedAt?.toDate() || new Date(),
+          status: data.status ?? null,
+          discountPrice: data.discountPrice ?? null,
         }
       })
 
@@ -71,7 +73,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, description, price, categoryId, imageUrl } = body
+    const { name, description, price, categoryId, imageUrl, status, discountPrice } = body
 
     console.log("📦 Creating new product:", { name, price, categoryId })
 
@@ -82,12 +84,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const productData: ProductCreate = {
+    const productData: ProductCreate & { status?: string | null, discountPrice?: number | null } = {
       name,
       description,
       price: Number(price),
       categoryId,
       imageUrl,
+      status: typeof status !== 'undefined' ? status : null,
+      discountPrice: typeof discountPrice === 'number' ? discountPrice : null,
     }
 
     if (isFirebaseConfigured() && db) {

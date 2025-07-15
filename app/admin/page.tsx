@@ -9,12 +9,14 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Package, Clock, CheckCircle, DollarSign, RefreshCw, AlertCircle, Plus, Edit, Trash2 } from "lucide-react"
+import { Package, Clock, CheckCircle, DollarSign, RefreshCw, AlertCircle, Plus, Edit, Trash2, Calendar, Filter, AlertTriangle, BadgeCheck } from "lucide-react"
 import { ensureDate } from "@/lib/firebase"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 import { ProductForm } from "@/components/product-form"
 import Image from "next/image"
+import { format } from 'date-fns'
+import { useRef } from "react"
 
 interface OrderItem {
   id: string
@@ -57,6 +59,8 @@ interface Product {
   imageUrl: string
   createdAt: Date
   updatedAt: Date
+  status?: 'new' | 'promotion' | null
+  discountPrice?: number
 }
 
 // Category type
@@ -65,6 +69,13 @@ interface Category {
   name: string
   slug: string
 }
+
+// Define ProductStatus enum
+const PRODUCT_STATUS = [
+  { value: 'none', label: 'Aucun' },
+  { value: 'new', label: 'Nouveau' },
+  { value: 'promotion', label: 'Promotion' },
+] as const
 
 export default function AdminPage() {
   const [orders, setOrders] = useState<Order[]>([])
@@ -84,14 +95,26 @@ export default function AdminPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [categoryName, setCategoryName] = useState("")
   const [categoryLoading, setCategoryLoading] = useState(false)
+  const [selectedDate, setSelectedDate] = useState(() => format(new Date(), 'yyyy-MM-dd'))
+  const [selectedStatus, setSelectedStatus] = useState('all')
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null)
+  const [serviceFees, setServiceFees] = useState<number | null>(null)
+  const [serviceFeesInput, setServiceFeesInput] = useState("")
+  const [serviceFeesLoading, setServiceFeesLoading] = useState(false)
+  const serviceFeesInputRef = useRef<HTMLInputElement>(null)
+  const [promotedProducts, setPromotedProducts] = useState<string[]>([])
+  const [promotedLoading, setPromotedLoading] = useState(false)
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (date?: string) => {
     try {
-      const response = await fetch("/api/orders")
+      let url = '/api/orders'
+      if (date) url += `?date=${date}`
+      const response = await fetch(url)
       const data = await response.json()
       setOrders(data.orders || [])
     } catch (error) {
-      console.error("Error fetching orders:", error)
+      console.error('Error fetching orders:', error)
     }
   }
 
@@ -119,7 +142,7 @@ export default function AdminPage() {
     setRefreshing(true)
     try {
       const previousOrderCount = orders.length
-      await Promise.all([fetchOrders(), fetchAnalytics(), fetchProducts()])
+      await Promise.all([fetchOrders(selectedDate), fetchAnalytics(), fetchProducts()])
       
       // Check if new orders were added
       if (orders.length > previousOrderCount) {
@@ -195,27 +218,100 @@ export default function AdminPage() {
     }
   }
 
+  // Fetch service fees on mount
+  useEffect(() => {
+    fetch("/api/config")
+      .then(res => res.json())
+      .then(data => {
+        setServiceFees(data.serviceFees)
+        setServiceFeesInput(data.serviceFees?.toString() || "")
+      })
+      .catch(() => setServiceFees(null))
+  }, [])
+
+  const handleUpdateServiceFees = async () => {
+    setServiceFeesLoading(true)
+    try {
+      const value = parseInt(serviceFeesInput, 10)
+      if (isNaN(value) || value < 0) {
+        toast({ title: "Erreur", description: "Valeur invalide.", variant: "destructive" })
+        setServiceFeesLoading(false)
+        return
+      }
+      const res = await fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serviceFees: value })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setServiceFees(data.serviceFees)
+        setServiceFeesInput(data.serviceFees.toString())
+        toast({ title: "Frais de service mis à jour", description: `Nouveaux frais: ${data.serviceFees} DA` })
+      } else {
+        toast({ title: "Erreur", description: "Impossible de mettre à jour les frais.", variant: "destructive" })
+      }
+    } catch {
+      toast({ title: "Erreur", description: "Impossible de mettre à jour les frais.", variant: "destructive" })
+    } finally {
+      setServiceFeesLoading(false)
+    }
+  }
+
+  // Fetch promoted products on mount
+  useEffect(() => {
+    fetch("/api/config?type=promotedProducts")
+      .then(res => res.json())
+      .then(data => setPromotedProducts(data.promotedProducts || []))
+      .catch(() => setPromotedProducts([]))
+  }, [])
+
+  const handleTogglePromoted = async (productId: string) => {
+    setPromotedLoading(true)
+    let newList: string[]
+    if (promotedProducts.includes(productId)) {
+      newList = promotedProducts.filter(id => id !== productId)
+    } else {
+      newList = [...promotedProducts, productId]
+    }
+    setPromotedProducts(newList)
+    try {
+      const res = await fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ promotedProducts: newList })
+      })
+      if (!res.ok) throw new Error()
+      toast({ title: "Section promotion mise à jour" })
+    } catch {
+      toast({ title: "Erreur", description: "Impossible de mettre à jour la promotion.", variant: "destructive" })
+    } finally {
+      setPromotedLoading(false)
+    }
+  }
+
   useEffect(() => {
     setMounted(true)
   }, [])
 
   useEffect(() => {
     if (!mounted) return
-
     const loadData = async () => {
       setLoading(true)
-      await Promise.all([fetchOrders(), fetchAnalytics(), fetchProducts()])
+      await Promise.all([
+        fetchOrders(selectedDate),
+        fetchAnalytics(),
+        fetchProducts()
+      ])
       setLoading(false)
     }
     loadData()
-
     // Set up auto-refresh every 30 seconds
     const interval = setInterval(() => {
       refreshData()
-    }, 30000) // 30 seconds
-
+    }, 30000)
     return () => clearInterval(interval)
-  }, [mounted])
+  }, [mounted, selectedDate])
 
   // Fetch categories on mount
   useEffect(() => { fetchCategories() }, [])
@@ -359,15 +455,14 @@ export default function AdminPage() {
     }
   }
 
-  // Order deletion
+  // Replace handleDeleteOrder to not confirm, just delete
   const handleDeleteOrder = async (trackingId: string) => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer cette commande ?")) return
     try {
       const response = await fetch(`/api/orders/${trackingId}`, {
         method: "DELETE",
       })
       if (response.ok) {
-        await fetchOrders()
+        await fetchOrders(selectedDate)
         toast({
           title: "Commande supprimée",
           description: "La commande a été supprimée avec succès.",
@@ -383,6 +478,9 @@ export default function AdminPage() {
         description: "Impossible de supprimer la commande. Veuillez réessayer.",
         variant: "destructive",
       })
+    } finally {
+      setDeleteDialogOpen(false)
+      setOrderToDelete(null)
     }
   }
 
@@ -416,6 +514,11 @@ export default function AdminPage() {
     return `${price.toFixed(0)} DA`
   }
 
+  // Filtered orders by status
+  const filteredOrders = selectedStatus === 'all'
+    ? orders
+    : orders.filter(order => order.status === selectedStatus)
+
   if (!mounted || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -430,23 +533,10 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8 flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Tableau de Bord Admin</h1>
-            <p className="text-gray-600">Gérez vos commandes et suivez vos performances</p>
-          </div>
-          <Button
-            onClick={refreshData}
-            disabled={refreshing}
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Actualisation...' : 'Actualiser'}
-          </Button>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Tableau de Bord Admin</h1>
+          <p className="text-gray-600">Gérez vos commandes et suivez vos performances</p>
         </div>
-
         {/* Analytics Cards */}
         {analytics && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -495,7 +585,47 @@ export default function AdminPage() {
             </Card>
           </div>
         )}
-
+        {/* Filter Section */}
+        <Card className="mb-6 shadow-md border-0">
+          <CardContent className="py-4">
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Calendar className="w-4 h-4 text-amber-700" />
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={e => setSelectedDate(e.target.value)}
+                  className="border rounded px-2 py-1 font-body text-base focus:ring-2 focus:ring-green-200 focus:border-green-400 transition w-full sm:w-auto"
+                  max={format(new Date(), 'yyyy-MM-dd')}
+                />
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Filter className="w-4 h-4 text-amber-700" />
+                <select
+                  value={selectedStatus}
+                  onChange={e => setSelectedStatus(e.target.value)}
+                  className="border rounded px-2 py-1 font-body text-base focus:ring-2 focus:ring-green-200 focus:border-green-400 transition w-full sm:w-auto"
+                >
+                  <option value="all">Tous les statuts</option>
+                  <option value="En préparation">En préparation</option>
+                  <option value="En cours de livraison">En cours de livraison</option>
+                  <option value="Livré">Livré</option>
+                  <option value="Annulé">Annulé</option>
+                </select>
+              </div>
+              <Button
+                onClick={refreshData}
+                disabled={refreshing}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshing ? 'Actualisation...' : 'Actualiser'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
         {/* Orders Table */}
         <Card>
           <CardHeader>
@@ -516,7 +646,7 @@ export default function AdminPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {orders.map((order) => (
+                {filteredOrders.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell className="font-medium">{order.trackingId}</TableCell>
                     <TableCell>{formatDate(order.createdAt)}</TableCell>
@@ -587,7 +717,10 @@ export default function AdminPage() {
                         variant="destructive"
                         size="sm"
                         className="ml-2"
-                        onClick={() => handleDeleteOrder(order.trackingId)}
+                        onClick={() => {
+                          setOrderToDelete(order)
+                          setDeleteDialogOpen(true)
+                        }}
                       >
                         Supprimer
                       </Button>
@@ -612,6 +745,20 @@ export default function AdminPage() {
             </Table>
           </CardContent>
         </Card>
+        {/* Custom Delete Dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent className="max-w-sm rounded-xl p-6">
+            <div className="flex flex-col items-center text-center">
+              <AlertTriangle className="w-12 h-12 text-red-500 mb-2" />
+              <h3 className="text-lg font-bold text-amber-900 mb-2">Confirmer la suppression</h3>
+              <p className="text-amber-800 mb-4">Êtes-vous sûr de vouloir supprimer la commande <span className="font-semibold">#{orderToDelete?.trackingId}</span> ? Cette action est irréversible.</p>
+              <div className="flex gap-4 mt-2">
+                <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} className="rounded-full px-6">Annuler</Button>
+                <Button variant="destructive" onClick={() => orderToDelete && handleDeleteOrder(orderToDelete.trackingId)} className="rounded-full px-6">Supprimer</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Category Management Section */}
         <div className="mb-12">
@@ -644,6 +791,77 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {/* Service Fees Management Section */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Frais de service</CardTitle>
+            <CardDescription>Définissez les frais de service appliqués à chaque commande (en DA).</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <input
+                type="number"
+                min="0"
+                ref={serviceFeesInputRef}
+                value={serviceFeesInput}
+                onChange={e => setServiceFeesInput(e.target.value)}
+                className="border rounded px-3 py-2 w-32 text-lg font-bold text-green-700"
+                disabled={serviceFeesLoading}
+              />
+              <Button onClick={handleUpdateServiceFees} disabled={serviceFeesLoading} className="bg-green-600 hover:bg-green-700 text-white">
+                {serviceFeesLoading ? "Enregistrement..." : "Enregistrer"}
+              </Button>
+              {serviceFees !== null && (
+                <span className="text-gray-500 ml-2">Actuel: <span className="font-semibold text-green-700">{serviceFees} DA</span></span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Promotion/New Products Management Section */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Promotion / Nouveaux Produits</CardTitle>
+            <CardDescription>Sélectionnez les produits à mettre en avant sur la page d'accueil.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {products.map(product => (
+                <div key={product.id} className={`relative border rounded-lg p-3 flex flex-col items-center ${promotedProducts.includes(product.id) ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white'}`}>
+                  <div className="w-20 h-20 mb-2 flex items-center justify-center">
+                    {product.imageUrl ? (
+                      <Image src={product.imageUrl} alt={product.name} width={80} height={80} className="object-cover rounded" />
+                    ) : (
+                      <Package className="h-10 w-10 text-gray-400" />
+                    )}
+                  </div>
+                  <div className="text-center mb-2">
+                    <div className="font-semibold text-amber-900 text-base truncate w-32">{product.name}</div>
+                    <div className="text-xs text-gray-500">{product.price} DA</div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={promotedProducts.includes(product.id) ? "secondary" : "outline"}
+                    className="w-full"
+                    onClick={() => handleTogglePromoted(product.id)}
+                    disabled={promotedLoading}
+                  >
+                    {promotedProducts.includes(product.id) ? (
+                      <span className="flex items-center gap-1 text-green-700"><BadgeCheck className="w-4 h-4" /> Retirer</span>
+                    ) : (
+                      <span>Mettre en avant</span>
+                    )}
+                  </Button>
+                  {promotedProducts.includes(product.id) && (
+                    <span className="absolute top-2 right-2"><Badge className="bg-green-600 text-white">En avant</Badge></span>
+                  )}
+                </div>
+              ))}
+              {products.length === 0 && <span className="text-gray-400">Aucun produit</span>}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Product Management Section */}
         <div className="mt-12">
           <div className="flex justify-between items-center mb-6">
@@ -665,73 +883,132 @@ export default function AdminPage() {
 
           {/* Products Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {products.map((product) => (
-              <Card key={product.id} className="overflow-hidden">
-                <div className="relative h-48 bg-gray-100">
-                  {product.imageUrl ? (
-                    <Image
-                      src={product.imageUrl}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Package className="h-12 w-12 text-gray-400" />
-                    </div>
-                  )}
-                </div>
-                <CardContent className="p-4">
-                  <div className="space-y-2">
-                    <h3 className="font-semibold text-lg truncate">{product.name}</h3>
-                    <p className="text-sm text-gray-600 line-clamp-2">{product.description}</p>
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold text-green-600">{formatPrice(product.price)}</span>
-                      <Badge key={product.id} variant="secondary">
-                        {categories.find(c => c.id === product.categoryId)?.name || "?"}
-                      </Badge>
-                    </div>
-                    <div className="flex justify-end space-x-2 pt-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setEditingProduct(product)
-                          setShowProductForm(true)
-                        }}
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleDeleteProduct(product.id)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
+            {products.map((product) => {
+              // Determine the current status value for the dropdown
+              const currentStatus = product.status ?? 'none'
+              return (
+                <Card key={product.id} className="overflow-hidden relative">
+                  <div className="relative h-48 bg-gray-100">
+                    {product.imageUrl ? (
+                      <Image
+                        src={product.imageUrl}
+                        alt={product.name}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Package className="h-12 w-12 text-gray-400" />
+                      </div>
+                    )}
+                    {/* BADGES */}
+                    {product.status === 'new' && (
+                      <span className="absolute top-2 left-2 z-10"><Badge className="bg-green-600 text-white">Nouveau</Badge></span>
+                    )}
+                    {product.status === 'promotion' && (
+                      <span className="absolute top-2 right-2 z-10"><Badge className="bg-red-600 text-white">Promo</Badge></span>
+                    )}
                   </div>
-                </CardContent>
+                  <CardContent className="p-4">
+                    <div className="space-y-2">
+                      <h3 className="font-semibold text-lg truncate">{product.name}</h3>
+                      <p className="text-sm text-gray-600 line-clamp-2">{product.description}</p>
+                      <div className="flex justify-between items-center">
+                        {product.status === 'promotion' && product.discountPrice ? (
+                          <>
+                            <span className="font-bold text-green-600">{product.discountPrice} DA</span>
+                            <span className="line-through text-gray-400 text-sm">{product.price} DA</span>
+                          </>
+                        ) : (
+                          <span className="font-bold text-green-600">{product.price} DA</span>
+                        )}
+                        <Badge key={product.id} variant="secondary">
+                          {categories.find(c => c.id === product.category)?.name || "?"}
+                        </Badge>
+                      </div>
+                      {/* Status Dropdown */}
+                      <div className="flex items-center gap-2 mt-2">
+                        <label className="text-xs text-gray-500">Statut:</label>
+                        <select
+                          value={currentStatus}
+                          onChange={async (e) => {
+                            const newStatus = e.target.value === 'none' ? null : e.target.value
+                            let update: any = { status: newStatus }
+                            if (newStatus !== 'promotion') update.discountPrice = null
+                            await fetch(`/api/products/${product.id}`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify(update)
+                            })
+                            await fetchProducts()
+                          }}
+                          className="border rounded px-2 py-1 text-xs"
+                        >
+                          {PRODUCT_STATUS.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                        {/* Discounted price input if promotion */}
+                        {currentStatus === 'promotion' && (
+                          <input
+                            type="number"
+                            min={1}
+                            placeholder="Prix promo"
+                            value={product.discountPrice ?? ''}
+                            onChange={async (e) => {
+                              const val = parseInt(e.target.value, 10)
+                              if (!val || val >= product.price) return
+                              await fetch(`/api/products/${product.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ discountPrice: val })
+                              })
+                              await fetchProducts()
+                            }}
+                            className="border rounded px-2 py-1 text-xs w-20 ml-2"
+                          />
+                        )}
+                      </div>
+                      <div className="flex justify-end space-x-2 pt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingProduct(product)
+                            setShowProductForm(true)
+                          }}
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDeleteProduct(product.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )})}
+            {products.length === 0 && (
+              <Card className="p-8 text-center">
+                <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Aucun produit</h3>
+                <p className="text-gray-600 mb-4">Commencez par ajouter votre premier produit</p>
+                <Button
+                  onClick={() => {
+                    setEditingProduct(null)
+                    setShowProductForm(true)
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Ajouter un Produit
+                </Button>
               </Card>
-            ))}
+            )}
           </div>
-
-          {products.length === 0 && (
-            <Card className="p-8 text-center">
-              <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Aucun produit</h3>
-              <p className="text-gray-600 mb-4">Commencez par ajouter votre premier produit</p>
-              <Button
-                onClick={() => {
-                  setEditingProduct(null)
-                  setShowProductForm(true)
-                }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Ajouter un Produit
-              </Button>
-            </Card>
-          )}
         </div>
 
         {/* Product Form Modal */}

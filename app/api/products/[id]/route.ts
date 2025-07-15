@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db, isFirebaseConfigured } from "@/lib/firebase"
-import { doc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore"
+import { doc, updateDoc, deleteDoc, serverTimestamp, getDoc } from "firebase/firestore"
 
 // Mock data store for when Firebase is not configured
 const mockProducts: any[] = []
@@ -13,38 +13,71 @@ export async function PUT(
   try {
     const { id } = params
     const body = await request.json()
-    // In PUT, expect categoryId instead of category
-    const { name, description, price, categoryId, imageUrl } = body
-
-    console.log(`🔄 Updating product ${id}:`, { name, price, categoryId })
-
-    if (!name || !description || !price || !categoryId || !imageUrl) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      )
+    
+    // Extract the fields for logging (destructure from body)
+    const { name, price, categoryId, status, discountPrice } = body
+    
+    // Accept any fields for partial update
+    const updateData: any = { ...body }
+    
+    // Convert price to number if it exists
+    if ('price' in updateData) {
+      updateData.price = Number(updateData.price)
     }
-
-    const updateData = {
-      name,
-      description,
-      price: Number(price),
-      categoryId,
-      imageUrl,
-      updatedAt: serverTimestamp(),
+    
+    // Sanitize discountPrice
+    if ('discountPrice' in updateData) {
+      if (updateData.discountPrice === '' || isNaN(Number(updateData.discountPrice))) {
+        delete updateData.discountPrice
+      } else {
+        updateData.discountPrice = Number(updateData.discountPrice)
+      }
     }
-
+    
+    // Sanitize status
+    if ('status' in updateData) {
+      if (updateData.status === '' || updateData.status === 'none') {
+        updateData.status = null
+      }
+    }
+    
+    // Remove empty string fields (except for fields that can be empty)
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === '' && key !== 'imageUrl' && key !== 'description') {
+        delete updateData[key]
+      }
+    })
+    
+    // Ensure status and discountPrice are set to null if not provided
+    if (!('status' in updateData)) updateData.status = null
+    if (!('discountPrice' in updateData)) updateData.discountPrice = null
+    
+    console.log(`🔄 Updating product ${id}:`, { name, price, categoryId, status, discountPrice })
+    
     if (isFirebaseConfigured() && db) {
       try {
         console.log("🔥 Updating product in Firebase...")
         const productRef = doc(db, "products", id)
-        await updateDoc(productRef, updateData)
-
+        
+        // Fetch current product
+        const currentSnap = await getDoc(productRef)
+        const currentData = currentSnap.exists() ? currentSnap.data() : {}
+        
+        // Merge updateData with currentData and add Firebase timestamp
+        const mergedData = { 
+          ...currentData, 
+          ...updateData,
+          updatedAt: serverTimestamp() // Use serverTimestamp for Firebase
+        }
+        
+        // Ensure status and discountPrice are always present
+        if (!('status' in mergedData)) mergedData.status = null
+        if (!('discountPrice' in mergedData)) mergedData.discountPrice = null
+        
+        await updateDoc(productRef, mergedData)
+        
         console.log("✅ Product updated successfully in Firebase")
         console.log(`   📄 Document ID: ${id}`)
-        console.log(`   🏷️ Name: ${name}`)
-        console.log(`   💰 Price: ${price} DA`)
-
         return NextResponse.json({ success: true })
       } catch (error) {
         console.error("❌ Error updating product in Firebase:", error)
@@ -55,13 +88,13 @@ export async function PUT(
         })
         console.warn("🔄 Falling back to mock storage...")
         
-        // Fall back to mock storage
+        // Fall back to mock storage with regular Date object
         const productIndex = mockProducts.findIndex(p => p.id === id)
         if (productIndex !== -1) {
           mockProducts[productIndex] = {
             ...mockProducts[productIndex],
             ...updateData,
-            updatedAt: new Date(),
+            updatedAt: new Date(), // Use regular Date for mock storage
           }
           console.log("✅ Product updated in mock storage")
           return NextResponse.json({ success: true })
@@ -79,7 +112,7 @@ export async function PUT(
         mockProducts[productIndex] = {
           ...mockProducts[productIndex],
           ...updateData,
-          updatedAt: new Date(),
+          updatedAt: new Date(), // Use regular Date for mock storage
         }
         console.log("✅ Product updated in mock storage")
         return NextResponse.json({ success: true })
@@ -98,7 +131,6 @@ export async function PUT(
     )
   }
 }
-
 // Delete a product
 export async function DELETE(
   request: NextRequest,
