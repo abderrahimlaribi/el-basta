@@ -41,6 +41,9 @@ export async function PUT(
       }
     }
     
+    // Ensure isAvailable is set
+    if (!('isAvailable' in updateData)) updateData.isAvailable = true
+    
     // Remove empty string fields (except for fields that can be empty)
     Object.keys(updateData).forEach(key => {
       if (updateData[key] === '' && key !== 'imageUrl' && key !== 'description') {
@@ -73,6 +76,7 @@ export async function PUT(
         // Ensure status and discountPrice are always present
         if (!('status' in mergedData)) mergedData.status = null
         if (!('discountPrice' in mergedData)) mergedData.discountPrice = null
+        if (!('isAvailable' in mergedData)) mergedData.isAvailable = true
         
         await updateDoc(productRef, mergedData)
         

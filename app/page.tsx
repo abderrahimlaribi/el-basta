@@ -28,6 +28,8 @@ import { MobileHeader } from "@/components/mobile-header"
 
 import Link from "next/link"
 import { getProducts, type Product } from "@/lib/database"
+import { fetchStoreHours, isStoreClosed } from '@/lib/utils'
+import { useCallback } from 'react'
 
 // Add types
 interface Category { id: string; name: string; slug: string }
@@ -41,16 +43,20 @@ export default function TeaRoomLanding() {
   const [error, setError] = useState<string | null>(null)
   const [promotedProducts, setPromotedProducts] = useState<Product[]>([])
   const promoSliderRef = useRef<HTMLDivElement>(null)
+  const [openTime, setOpenTime] = useState('08:00')
+  const [closeTime, setCloseTime] = useState('23:00')
+  const [storeClosed, setStoreClosed] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
       setError(null)
       try {
-        const [catRes, prodRes, promoRes] = await Promise.all([
+        const [catRes, prodRes, promoRes, hours] = await Promise.all([
           fetch("/api/categories"),
           fetch("/api/products"),
-          fetch("/api/config?type=promotedProducts")
+          fetch("/api/config?type=promotedProducts"),
+          fetchStoreHours()
         ])
         const catData = await catRes.json()
         const prodData = await prodRes.json()
@@ -60,6 +66,9 @@ export default function TeaRoomLanding() {
         // Find promoted products by ID
         const promoIds = promoData.promotedProducts || []
         setPromotedProducts((prodData.products || []).filter((p: Product) => promoIds.includes(p.id)))
+        setOpenTime(hours.openTime)
+        setCloseTime(hours.closeTime)
+        setStoreClosed(isStoreClosed(hours.openTime, hours.closeTime))
       } catch (err) {
         setError("Erreur lors du chargement du menu. Veuillez réessayer.")
       } finally {
@@ -67,6 +76,12 @@ export default function TeaRoomLanding() {
       }
     }
     fetchData()
+    // Optionally, set up interval to auto-refresh storeClosed every minute
+    const interval = setInterval(async () => {
+      const hours = await fetchStoreHours()
+      setStoreClosed(isStoreClosed(hours.openTime, hours.closeTime))
+    }, 60000)
+    return () => clearInterval(interval)
   }, [])
 
   // Group products by categoryId
@@ -209,6 +224,13 @@ export default function TeaRoomLanding() {
         </div>
       </section>
 
+      {/* Store Closed Banner */}
+      {storeClosed && (
+        <div className="bg-red-100 text-red-800 text-center py-2 font-semibold">
+          Le magasin est actuellement fermé. Heures d’ouverture : {openTime} – {closeTime}.
+        </div>
+      )}
+
       {/* Promotion / New Products Section */}
       {promotedProducts.length > 0 && (
         <section className="py-20 px-6 bg-gradient-to-br from-green-50 to-amber-50 border-y-4 border-green-400/30 shadow-xl">
@@ -246,6 +268,8 @@ export default function TeaRoomLanding() {
                       category={categories.find(c => c.id === item.categoryId)?.name || ""}
                       status={item.status}
                       discountPrice={item.discountPrice}
+                      isAvailable={typeof item.isAvailable === 'boolean' ? item.isAvailable : true}
+                      storeClosed={storeClosed}
                     />
                     {/* Highlight badges for discount, new, limited */}
                     {item.discount && (
@@ -327,6 +351,8 @@ export default function TeaRoomLanding() {
                       category={cat.name}
                       status={item.status}
                       discountPrice={item.discountPrice}
+                      isAvailable={typeof item.isAvailable === 'boolean' ? item.isAvailable : true}
+                      storeClosed={storeClosed}
                     />
                   ))}
                 </div>

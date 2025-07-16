@@ -195,4 +195,5 @@ export interface Product {
   updatedAt: Date
   status?: 'new' | 'promotion' | null
   discountPrice?: number
+  isAvailable: boolean
 }

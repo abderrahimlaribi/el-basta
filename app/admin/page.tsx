@@ -62,6 +62,7 @@ interface Product {
   updatedAt: Date
   status?: 'new' | 'promotion' | null
   discountPrice?: number
+  isAvailable: boolean
 }
 
 // Category type
@@ -106,6 +107,11 @@ export default function AdminPage() {
   const serviceFeesInputRef = useRef<HTMLInputElement>(null)
   const [promotedProducts, setPromotedProducts] = useState<string[]>([])
   const [promotedLoading, setPromotedLoading] = useState(false)
+  // Store settings (business hours)
+  const [openTime, setOpenTime] = useState("08:00")
+  const [closeTime, setCloseTime] = useState("23:00")
+  const [storeSettingsLoading, setStoreSettingsLoading] = useState(false)
+  const [isDeliveryAvailable, setIsDeliveryAvailable] = useState(true)
 
   const fetchOrders = async (date?: string) => {
     try {
@@ -288,6 +294,65 @@ export default function AdminPage() {
       toast({ title: "Erreur", description: "Impossible de mettre à jour la promotion.", variant: "destructive" })
     } finally {
       setPromotedLoading(false)
+    }
+  }
+
+  // Fetch store settings on mount
+  useEffect(() => {
+    fetch("/api/config?type=storeSettings")
+      .then(res => res.json())
+      .then(data => {
+        if (data.storeSettings) {
+          setOpenTime(data.storeSettings.openTime || "08:00")
+          setCloseTime(data.storeSettings.closeTime || "23:00")
+          setIsDeliveryAvailable(
+            typeof data.storeSettings.isDeliveryAvailable === 'boolean'
+              ? data.storeSettings.isDeliveryAvailable
+              : true
+          )
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  const handleUpdateDeliveryAvailable = async (value: boolean) => {
+    setStoreSettingsLoading(true)
+    try {
+      const res = await fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storeSettings: { isDeliveryAvailable: value } })
+      })
+      if (res.ok) {
+        setIsDeliveryAvailable(value)
+        toast({ title: value ? "Livraison activée" : "Livraison désactivée", description: value ? "Le service de livraison est disponible." : "Le service de livraison est désactivé." })
+      } else {
+        toast({ title: "Erreur", description: "Impossible de mettre à jour la livraison.", variant: "destructive" })
+      }
+    } catch {
+      toast({ title: "Erreur", description: "Impossible de mettre à jour la livraison.", variant: "destructive" })
+    } finally {
+      setStoreSettingsLoading(false)
+    }
+  }
+
+  const handleUpdateStoreSettings = async () => {
+    setStoreSettingsLoading(true)
+    try {
+      const res = await fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storeSettings: { openTime, closeTime } })
+      })
+      if (res.ok) {
+        toast({ title: "Heures d'ouverture mises à jour", description: `Nouvelles heures : ${openTime} – ${closeTime}` })
+      } else {
+        toast({ title: "Erreur", description: "Impossible de mettre à jour les heures.", variant: "destructive" })
+      }
+    } catch {
+      toast({ title: "Erreur", description: "Impossible de mettre à jour les heures.", variant: "destructive" })
+    } finally {
+      setStoreSettingsLoading(false)
     }
   }
 
@@ -819,6 +884,60 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
+        {/* Store Business Hours Section */}
+        <Card className="mb-8 border-2 border-green-600">
+          <CardHeader>
+            <CardTitle>Heures d'ouverture du magasin</CardTitle>
+            <CardDescription>Définissez les heures d'ouverture et de fermeture du magasin (heure locale Algérie, format 24h).</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="openTime">Heure d’ouverture</Label>
+                <input
+                  id="openTime"
+                  type="time"
+                  value={openTime}
+                  onChange={e => setOpenTime(e.target.value)}
+                  className="border rounded px-3 py-2 w-28 text-lg font-bold text-green-700"
+                  disabled={storeSettingsLoading}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="closeTime">Heure de fermeture</Label>
+                <input
+                  id="closeTime"
+                  type="time"
+                  value={closeTime}
+                  onChange={e => setCloseTime(e.target.value)}
+                  className="border rounded px-3 py-2 w-28 text-lg font-bold text-green-700"
+                  disabled={storeSettingsLoading}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="isDeliveryAvailable">Service de livraison disponible</Label>
+                <input
+                  id="isDeliveryAvailable"
+                  type="checkbox"
+                  checked={isDeliveryAvailable}
+                  onChange={e => handleUpdateDeliveryAvailable(e.target.checked)}
+                  className="accent-green-600 w-5 h-5"
+                  disabled={storeSettingsLoading}
+                />
+                {isDeliveryAvailable ? (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-xs font-semibold ml-1">Disponible</span>
+                ) : (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold ml-1">Indisponible</span>
+                )}
+              </div>
+              <Button onClick={handleUpdateStoreSettings} disabled={storeSettingsLoading} className="bg-green-600 hover:bg-green-700 text-white">
+                {storeSettingsLoading ? "Enregistrement..." : "Enregistrer"}
+              </Button>
+              <span className="text-gray-500 ml-2">Actuel: <span className="font-semibold text-green-700">{openTime} – {closeTime}</span></span>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Promotion/New Products Management Section */}
         <Card className="mb-8">
           <CardHeader>
@@ -833,6 +952,9 @@ export default function AdminPage() {
                   <div className="text-center mb-2">
                     <div className="font-semibold text-amber-900 text-base truncate w-32">{product.name}</div>
                     <div className="text-xs text-gray-500">{product.price} DA</div>
+                    {!product.isAvailable && (
+                      <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-gray-200 text-gray-500 text-xs font-semibold">Indisponible</span>
+                    )}
                   </div>
                   <Button
                     size="sm"
@@ -903,6 +1025,9 @@ export default function AdminPage() {
                     {product.status === 'promotion' && (
                       <span className="absolute top-2 right-2 z-10"><Badge className="bg-red-600 text-white">Promo</Badge></span>
                     )}
+                    {!product.isAvailable && (
+                      <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-gray-200 text-gray-500 text-xs font-semibold">Indisponible actuellement</span>
+                    )}
                   </div>
                   <CardContent className="p-4">
                     <div className="space-y-2">
@@ -912,7 +1037,7 @@ export default function AdminPage() {
                         {product.status === 'promotion' && product.discountPrice ? (
                           <>
                             <span className="font-bold text-green-600">{product.discountPrice} DA</span>
-                            <span className="line-through text-gray-400 text-sm">{product.price} DA</span>
+                            <span className="ml-2 px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-xs font-semibold line-through">{product.price} DA</span>
                           </>
                         ) : (
                           <span className="font-bold text-green-600">{product.price} DA</span>

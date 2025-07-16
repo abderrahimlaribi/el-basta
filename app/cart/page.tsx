@@ -15,6 +15,7 @@ import type { CartItem } from "@/lib/cart-store"
 import Image from "next/image"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { AlertTriangle } from "lucide-react"
+import { fetchStoreHours, isStoreClosed } from '@/lib/utils'
 
 export default function CartPage() {
   const router = useRouter()
@@ -35,14 +36,44 @@ export default function CartPage() {
   const [locationLoading, setLocationLoading] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [itemToDelete, setItemToDelete] = useState<CartItem | null>(null)
-  const [serviceFees, setServiceFees] = useState(0)
+  const [serviceFees, setServiceFees] = useState(0);
+  const [openTime, setOpenTime] = useState('08:00');
+  const [closeTime, setCloseTime] = useState('23:00');
+  const [storeClosed, setStoreClosed] = useState(false);
+  const [isDeliveryAvailable, setIsDeliveryAvailable] = useState(true);
 
   useEffect(() => {
-    fetch('/api/config')
-      .then(res => res.json())
-      .then(data => setServiceFees(data.serviceFees || 0))
-      .catch(() => setServiceFees(0))
+    const getHoursAndFees = async () => {
+      const hours = await fetchStoreHours()
+      setOpenTime(hours.openTime)
+      setCloseTime(hours.closeTime)
+      setStoreClosed(isStoreClosed(hours.openTime, hours.closeTime))
+      // Also fetch service fees and delivery availability
+      const res = await fetch('/api/config')
+      const data = await res.json()
+      setServiceFees(data.serviceFees || 0)
+      setIsDeliveryAvailable(
+        typeof data.storeSettings?.isDeliveryAvailable === 'boolean'
+          ? data.storeSettings.isDeliveryAvailable
+          : true
+      )
+    }
+    getHoursAndFees()
+    const interval = setInterval(getHoursAndFees, 60000)
+    return () => clearInterval(interval)
   }, [])
+
+  useEffect(() => {
+    const getHours = async () => {
+      const hours = await fetchStoreHours()
+      setOpenTime(hours.openTime)
+      setCloseTime(hours.closeTime)
+      setStoreClosed(isStoreClosed(hours.openTime, hours.closeTime))
+    }
+    getHours()
+    const interval = setInterval(getHours, 60000)
+    return () => clearInterval(interval)
+  }, []);
 
   const handleQuantityChange = (id: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -108,6 +139,12 @@ export default function CartPage() {
   const totalWithFees = getTotalPrice() + serviceFees
 
   const handleSubmitOrder = async () => {
+    // Re-check storeClosed before submitting
+    const hours = await fetchStoreHours()
+    if (isStoreClosed(hours.openTime, hours.closeTime)) {
+      setValidationError(`Le magasin est actuellement fermé. Heures d’ouverture : ${hours.openTime} – ${hours.closeTime}.`)
+      return
+    }
     if (!termsAccepted) {
       setValidationError("terms")
       return
@@ -193,6 +230,11 @@ export default function CartPage() {
     return (
       <div className="min-h-screen bg-cream-50 pt-24">
         <div className="max-w-2xl mx-auto px-6 py-8 text-center">
+          {storeClosed && (
+            <div className="bg-red-100 text-red-800 text-center py-2 font-semibold mb-4">
+              Le magasin est actuellement fermé. Heures d’ouverture : {openTime} – {closeTime}.
+            </div>
+          )}
           <div className="bg-white rounded-lg shadow-lg p-8">
             <ShoppingBag className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h1 className="text-2xl font-accent text-amber-900 mb-2">Panier Vide</h1>
@@ -353,14 +395,15 @@ export default function CartPage() {
                         name="deliveryMethod"
                         value="livraison"
                         checked={deliveryMethod === 'livraison'}
-                        onChange={() => setDeliveryMethod('livraison')}
+                        onChange={() => isDeliveryAvailable && setDeliveryMethod('livraison')}
+                        disabled={!isDeliveryAvailable}
                         className="sr-only"
                       />
                       <div className={`min-h-[7rem] w-full p-4 rounded-xl border-2 transition-all duration-200 group-hover:shadow-lg flex flex-col justify-center
                         ${deliveryMethod === 'livraison' 
                           ? 'border-green-500 bg-green-50 shadow-md' 
                           : 'border-gray-200 bg-white hover:border-green-300'
-                        }`}>
+                        }${!isDeliveryAvailable ? ' opacity-50 cursor-not-allowed' : ''}`}>
                         <div className="flex items-center gap-3 h-full">
                           <div className={`p-2 rounded-lg flex-shrink-0
                             ${deliveryMethod === 'livraison' 
@@ -372,6 +415,9 @@ export default function CartPage() {
                           <div className="flex-1 min-w-0">
                             <div className="font-semibold text-amber-900 font-body text-base md:text-lg">Livraison à domicile</div>
                             <div className="text-amber-700 font-body text-sm mt-1">Livraison directe chez vous</div>
+                            {!isDeliveryAvailable && (
+                              <div className="text-red-600 text-xs font-body mt-1 font-semibold">Le service de livraison est actuellement indisponible. Veuillez choisir 'Commande sur place'.</div>
+                            )}
                           </div>
                           <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0
                             ${deliveryMethod === 'livraison' 
@@ -487,7 +533,7 @@ export default function CartPage() {
 
                 <Button
                   onClick={handleSubmitOrder}
-                  disabled={!isFormValid}
+                  disabled={!isFormValid || storeClosed}
                   className="w-full bg-green-600 hover:bg-green-700 text-white font-body text-lg py-3 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {loading ? "Commande en cours..." : "Commander via WhatsApp"}

@@ -1,4 +1,15 @@
 {
   "serviceFees": 500,
-  "promotedProducts": []
+  "promotedProducts": [
+    "qXm9Ucmy9UMHTu6lkzeK",
+    "XJnIEuP1G6hhaD1dotqB",
+    "icjCaf3LrXoufcdLhtI3",
+    "T0u206uaE4AbWo4AEeHw",
+    "TXAmmpFUABE1uUXhLYRU"
+  ],
+  "storeSettings": {
+    "openTime": "08:00",
+    "closeTime": "23:30",
+    "isDeliveryAvailable": true
+  }
 }

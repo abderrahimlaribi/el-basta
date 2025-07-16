@@ -14,6 +14,9 @@ export interface Product {
   imageUrl: string
   createdAt: Date
   updatedAt: Date
+  status?: string | null
+  discountPrice?: number | null
+  isAvailable: boolean // <-- add this line
 }
 
 export interface ProductCreate {
@@ -46,6 +49,7 @@ export async function GET() {
           updatedAt: data.updatedAt?.toDate() || new Date(),
           status: data.status ?? null,
           discountPrice: data.discountPrice ?? null,
+          isAvailable: typeof data.isAvailable === 'boolean' ? data.isAvailable : true,
         }
       })
 
@@ -73,7 +77,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, description, price, categoryId, imageUrl, status, discountPrice } = body
+    const { name, description, price, categoryId, imageUrl, status, discountPrice, isAvailable } = body
 
     console.log("📦 Creating new product:", { name, price, categoryId })
 
@@ -84,7 +88,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const productData: ProductCreate & { status?: string | null, discountPrice?: number | null } = {
+    const productData: ProductCreate & { status?: string | null, discountPrice?: number | null, isAvailable: boolean } = {
       name,
       description,
       price: Number(price),
@@ -92,6 +96,7 @@ export async function POST(request: NextRequest) {
       imageUrl,
       status: typeof status !== 'undefined' ? status : null,
       discountPrice: typeof discountPrice === 'number' ? discountPrice : null,
+      isAvailable: typeof isAvailable === 'boolean' ? isAvailable : true,
     }
 
     if (isFirebaseConfigured() && db) {

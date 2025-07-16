@@ -20,6 +20,7 @@ interface Product {
   imageUrl: string
   status?: 'new' | 'promotion' | null
   discountPrice?: number
+  isAvailable?: boolean
 }
 
 interface ProductFormProps {
@@ -39,6 +40,7 @@ export function ProductForm({ product, onSubmit, onClose, loading, categories }:
     imageUrl: product?.imageUrl || "",
     status: product?.status ?? 'none',
     discountPrice: product?.discountPrice ?? '',
+    isAvailable: typeof product?.isAvailable === 'boolean' ? product.isAvailable : true,
   })
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState(product?.imageUrl || "")
@@ -99,6 +101,7 @@ export function ProductForm({ product, onSubmit, onClose, loading, categories }:
         imageUrl,
         status: formData.status === 'none' ? null : formData.status,
         discountPrice: formData.status === 'promotion' ? Number(formData.discountPrice) : undefined,
+        isAvailable: formData.isAvailable,
       })
     } catch (error) {
       console.error("Error submitting product:", error)
@@ -249,6 +252,18 @@ export function ProductForm({ product, onSubmit, onClose, loading, categories }:
               <option value="new">Nouveau</option>
               <option value="promotion">Promotion</option>
             </select>
+          </div>
+          {/* Availability Toggle */}
+          <div className="flex items-center gap-2">
+            <Label htmlFor="isAvailable">Disponible</Label>
+            <input
+              id="isAvailable"
+              type="checkbox"
+              checked={formData.isAvailable}
+              onChange={e => setFormData(prev => ({ ...prev, isAvailable: e.target.checked }))}
+              className="accent-green-600 w-5 h-5"
+            />
+            <span className="text-sm text-gray-500">{formData.isAvailable ? 'Disponible à la vente' : 'Indisponible'}</span>
           </div>
           {/* Discounted price input if promotion */}
           {formData.status === 'promotion' && (

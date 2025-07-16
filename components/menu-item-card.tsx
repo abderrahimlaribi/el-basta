@@ -18,9 +18,11 @@ interface MenuItemCardProps {
   category: string
   status?: 'new' | 'promotion' | null
   discountPrice?: number
+  isAvailable?: boolean
+  storeClosed?: boolean
 }
 
-export function MenuItemCard({ id, name, description, price, image, category, status, discountPrice }: MenuItemCardProps) {
+export function MenuItemCard({ id, name, description, price, image, category, status, discountPrice, isAvailable = true, storeClosed = false }: MenuItemCardProps) {
   const addItem = useCartStore((state) => state.addItem)
   const [isAdding, setIsAdding] = useState(false)
 
@@ -84,8 +86,8 @@ export function MenuItemCard({ id, name, description, price, image, category, st
             <span className="bg-green-600 text-white font-bold text-lg px-3 py-1 rounded-full shadow-md animate-bounceIn">
               {discountPrice.toLocaleString()} DA
             </span>
-            <span className="line-through text-base font-bold text-red-400 bg-white/80 px-2 py-0.5 rounded mt-1 shadow-sm" style={{ textDecorationThickness: 3 }}>
-              {price.toLocaleString()} DA
+            <span className="ml-2 px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-xs font-semibold line-through mt-1" style={{ textDecorationThickness: 2 }}>
+              <del>{price.toLocaleString()} DA</del>
             </span>
           </div>
         ) : (
@@ -99,13 +101,19 @@ export function MenuItemCard({ id, name, description, price, image, category, st
       <CardContent className="p-6">
         <h4 className="text-xl font-semibold text-amber-900 mb-2 font-body">{name}</h4>
         <p className="text-amber-700 mb-4 text-sm leading-relaxed font-body">{description}</p>
+        {!isAvailable && (
+          <span className="inline-block mb-2 px-2 py-0.5 rounded-full bg-gray-200 text-gray-500 text-xs font-semibold">Indisponible actuellement</span>
+        )}
+        {storeClosed && (
+          <span className="inline-block mb-2 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold">Magasin fermé</span>
+        )}
         <Button
           onClick={handleAddToCart}
-          disabled={isAdding}
+          disabled={isAdding || !isAvailable || storeClosed}
           className="w-full bg-green-600 hover:bg-green-700 text-white rounded-full transition-all duration-200 font-semibold"
         >
           {isAdding ? <Plus className="w-4 h-4 mr-2 animate-spin" /> : <ShoppingCart className="w-4 h-4 mr-2" />}
-          {isAdding ? "Ajout..." : "Ajouter au Panier"}
+          {isAdding ? "Ajout..." : storeClosed ? "Fermé" : isAvailable ? "Ajouter au Panier" : "Indisponible"}
         </Button>
       </CardContent>
     </Card>
