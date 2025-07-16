@@ -33,6 +33,8 @@ interface Order {
   customerName?: string
   customerPhone?: string
   customerNotes?: string
+  deliveryFee?: number
+  serviceFees?: number
 }
 
 export default function TrackingPage() {
@@ -259,6 +261,23 @@ export default function TrackingPage() {
                   ))}
                 </div>
                 <Separator className="my-4" />
+                {/* Cost breakdown */}
+                <div className="flex justify-between items-center text-base font-body">
+                  <span className="text-amber-900">Sous-total</span>
+                  <span className="text-green-700">{formatPrice(order.items.reduce((sum, item) => sum + item.price * item.quantity, 0))}</span>
+                </div>
+                {typeof order.deliveryFee === 'number' && (
+                  <div className="flex justify-between items-center text-base font-body">
+                    <span className="text-amber-900">Frais de livraison</span>
+                    <span className="text-green-700">{formatPrice(order.deliveryFee)}</span>
+                  </div>
+                )}
+                {typeof order.serviceFees === 'number' && (
+                  <div className="flex justify-between items-center text-base font-body">
+                    <span className="text-amber-900">Frais de service</span>
+                    <span className="text-green-700">{formatPrice(order.serviceFees)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center text-xl font-bold">
                   <span className="text-amber-900 font-body">Total</span>
                   <span className="text-green-600 font-body">{formatPrice(order.totalPrice)}</span>

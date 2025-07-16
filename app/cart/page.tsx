@@ -15,7 +15,9 @@ import type { CartItem } from "@/lib/cart-store"
 import Image from "next/image"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { AlertTriangle } from "lucide-react"
-import { fetchStoreHours, isStoreClosed } from '@/lib/utils'
+import { fetchStoreHours, isStoreClosed, getDistanceKm } from '@/lib/utils'
+
+interface DeliverySetting { min: number; max: number; fee: number }
 
 export default function CartPage() {
   const router = useRouter()
@@ -41,6 +43,10 @@ export default function CartPage() {
   const [closeTime, setCloseTime] = useState('23:00');
   const [storeClosed, setStoreClosed] = useState(false);
   const [isDeliveryAvailable, setIsDeliveryAvailable] = useState(true);
+  const STORE_COORDS = { lat: 36.7338212, lon: 3.1742928 };
+  const [deliverySettings, setDeliverySettings] = useState<DeliverySetting[]>([]);
+  const [deliveryFee, setDeliveryFee] = useState(0);
+  const [userCoords, setUserCoords] = useState<{ lat: number; lon: number } | null>(null);
 
   useEffect(() => {
     const getHoursAndFees = async () => {
@@ -48,20 +54,21 @@ export default function CartPage() {
       setOpenTime(hours.openTime)
       setCloseTime(hours.closeTime)
       setStoreClosed(isStoreClosed(hours.openTime, hours.closeTime))
-      // Also fetch service fees and delivery availability
-      const res = await fetch('/api/config')
-      const data = await res.json()
-      setServiceFees(data.serviceFees || 0)
+      // Also fetch service fees, delivery availability, and delivery settings
+      const res = await fetch("/api/config");
+      const data = await res.json();
+      setServiceFees(data.serviceFees || 0);
       setIsDeliveryAvailable(
-        typeof data.storeSettings?.isDeliveryAvailable === 'boolean'
+        typeof data.storeSettings?.isDeliveryAvailable === "boolean"
           ? data.storeSettings.isDeliveryAvailable
           : true
-      )
-    }
-    getHoursAndFees()
-    const interval = setInterval(getHoursAndFees, 60000)
-    return () => clearInterval(interval)
-  }, [])
+      );
+      setDeliverySettings(data.deliverySettings || []);
+    };
+    getHoursAndFees();
+    const interval = setInterval(getHoursAndFees, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const getHours = async () => {
@@ -94,26 +101,70 @@ export default function CartPage() {
   }
 
   const handleShareLocation = () => {
-    setLocationError("")
-    setLocationLoading(true)
+    setLocationError("");
+    setLocationLoading(true);
     if (!navigator.geolocation) {
-      setLocationError("La géolocalisation n'est pas supportée par votre navigateur.")
-      setLocationLoading(false)
-      return
+      setLocationError("La géolocalisation n'est pas supportée par votre navigateur.");
+      setLocationLoading(false);
+      return;
     }
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const { latitude, longitude } = position.coords
-        const url = `https://www.google.com/maps?q=${latitude},${longitude}`
-        setLocationUrl(url)
-        setLocationLoading(false)
+        const { latitude, longitude } = position.coords;
+        setUserCoords({ lat: latitude, lon: longitude });
+        const url = `https://www.google.com/maps?q=${latitude},${longitude}`;
+        setLocationUrl(url);
+        setLocationLoading(false);
+        // Debug logs
+        console.log("User position:", latitude, longitude);
+        console.log(deliverySettings.length);
+        if (deliverySettings.length >= 0) {
+          const distance = getDistanceKm(latitude, longitude, STORE_COORDS.lat, STORE_COORDS.lon);
+          console.log("Calculated distance (km):", distance);
+          console.log("Delivery intervals from DB:", deliverySettings);
+          const found = deliverySettings.find((d) => distance >= d.min && distance < d.max);
+          console.log("Matched interval:", found);
+          if (found) {
+            setDeliveryFee(found.fee);
+            setLocationError("");
+            console.log("Applied delivery fee:", found.fee);
+          } else {
+            setDeliveryFee(0);
+            setLocationError("La distance dépasse notre zone de livraison.");
+            console.log("No interval matched. Delivery not available.");
+          }
+        }
       },
       (error) => {
-        setLocationError("Impossible de récupérer votre position. Veuillez autoriser l'accès à la localisation.")
-        setLocationLoading(false)
+        setLocationError("Impossible de récupérer votre position. Veuillez autoriser l'accès à la localisation.");
+        setLocationLoading(false);
       }
-    )
-  }
+    );
+  };
+
+  useEffect(() => {
+    // If userCoords or deliverySettings change, recalculate delivery fee
+    if (userCoords && deliverySettings.length > 0 && deliveryMethod === "livraison") {
+      const distance = getDistanceKm(userCoords.lat, userCoords.lon, STORE_COORDS.lat, STORE_COORDS.lon);
+      console.log("User position:", userCoords.lat, userCoords.lon);
+      console.log("Calculated distance (km):", distance);
+      console.log("Delivery intervals from DB:", deliverySettings);
+      const found = deliverySettings.find((d) => distance >= d.min && distance < d.max);
+      console.log("Matched interval:", found);
+      if (found) {
+        setDeliveryFee(found.fee);
+        setLocationError("");
+        console.log("Applied delivery fee:", found.fee);
+      } else {
+        setDeliveryFee(0);
+        setLocationError("La distance dépasse notre zone de livraison.");
+        console.log("No interval matched. Delivery not available.");
+      }
+    } else if (deliveryMethod === "surplace") {
+      setDeliveryFee(0);
+      setLocationError("");
+    }
+  }, [userCoords, deliverySettings, deliveryMethod]);
 
   const validateForm = () => {
     if (!customerInfo.name.trim() || !customerInfo.phone.trim() || (deliveryMethod === 'livraison' && !locationUrl)) {
@@ -136,7 +187,7 @@ export default function CartPage() {
     termsAccepted &&
     !loading
 
-  const totalWithFees = getTotalPrice() + serviceFees
+  const totalWithFees = getTotalPrice() + serviceFees + (deliveryMethod === "livraison" ? deliveryFee : 0);
 
   const handleSubmitOrder = async () => {
     // Re-check storeClosed before submitting
@@ -168,9 +219,10 @@ export default function CartPage() {
           category: item.category,
           image: item.image,
         })),
-        deliveryAddress: deliveryMethod === 'surplace' ? 'Sur place' : locationUrl,
+        deliveryAddress: deliveryMethod === "surplace" ? "Sur place" : locationUrl,
         totalPrice: totalWithFees,
         serviceFees,
+        deliveryFee: deliveryMethod === "livraison" ? deliveryFee : 0,
         customerName: customerInfo.name,
         customerPhone: customerInfo.phone,
         customerNotes: customerInfo.notes,
@@ -193,9 +245,15 @@ export default function CartPage() {
       // Create WhatsApp message
       const orderDetails = items
         .map((item) => `• ${item.name} x${item.quantity} - ${(item.price * item.quantity).toFixed(0)} DA`)
-        .join("\n")
-      const addressText = deliveryMethod === 'surplace' ? 'Sur place (à retirer chez ElBasta)' : (locationUrl ? locationUrl : "[Adresse non fournie]")
-      const message = `🛍️ *Nouvelle Commande - ElBasta*\n\n🆔 *Code de commande: ${data.trackingId}*\n\n📋 *Détails de la commande:*\n${orderDetails}\n\n➕ *Frais de service:* ${serviceFees} DA\n💰 *Total: ${totalWithFees.toFixed(0)} DA*\n\n👤 *Informations client:*\n• Nom: ${customerInfo.name}\n• Téléphone: ${customerInfo.phone}\n• Adresse: ${addressText}\n${customerInfo.notes ? `• Notes: ${customerInfo.notes}` : ""}\n\n🔍 *ID de suivi: ${data.trackingId}*\n📱 *Lien de suivi: ${typeof window !== "undefined" ? window.location.origin : ""}/suivi?tracking=${data.trackingId}*\n\nMerci pour votre commande ! 🙏`
+        .join("\n");
+      const addressText = deliveryMethod === "surplace" ? "Sur place (à retirer chez ElBasta)" : locationUrl ? locationUrl : "[Adresse non fournie]";
+      const feeLines = [
+        `Sous-total : ${getTotalPrice()} DA`,
+        deliveryMethod === "livraison" ? `Frais de livraison : ${deliveryFee} DA` : null,
+        `Frais de service : ${serviceFees} DA`,
+        `Total : ${totalWithFees} DA`,
+      ].filter(Boolean).join("\n");
+      const message = `🛍️ *Nouvelle Commande - ElBasta*\n\n🆔 *Code de commande: ${data.trackingId}*\n\n📋 *Détails de la commande:*\n${orderDetails}\n\n${feeLines}\n\n👤 *Informations client:*\n• Nom: ${customerInfo.name}\n• Téléphone: ${customerInfo.phone}\n• Adresse: ${addressText}\n${customerInfo.notes ? `• Notes: ${customerInfo.notes}` : ""}\n\n🔍 *ID de suivi: ${data.trackingId}*\n📱 *Lien de suivi: ${typeof window !== "undefined" ? window.location.origin : ""}/suivi?tracking=${data.trackingId}*\n\nMerci pour votre commande ! 🙏`;
 
       const whatsappUrl = `https://wa.me/213665258642?text=${encodeURIComponent(message)}`
 
@@ -320,6 +378,19 @@ export default function CartPage() {
                 ))}
 
                 <Separator />
+                <div className="flex justify-between items-center text-base font-body">
+                  <span className="text-amber-900">Sous-total</span>
+                  <span className="text-green-700">{getTotalPrice()} DA</span>
+                </div>
+                {deliveryMethod === "livraison" && (
+                  <div className="flex justify-between items-center text-base font-body">
+                    <span className="text-amber-900">Frais de livraison</span>
+                    <span className="text-green-700">{deliveryFee} DA</span>
+                  </div>
+                )}
+                {deliveryMethod === "livraison" && locationError && (
+                  <div className="text-red-600 text-sm font-body mt-1">{locationError}</div>
+                )}
                 <div className="flex justify-between items-center text-base font-body">
                   <span className="text-amber-900">Frais de service</span>
                   <span className="text-green-700">{serviceFees} DA</span>

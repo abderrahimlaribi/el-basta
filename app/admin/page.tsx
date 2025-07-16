@@ -79,6 +79,9 @@ const PRODUCT_STATUS = [
   { value: 'promotion', label: 'Promotion' },
 ] as const
 
+// Delivery fee interval type
+interface DeliverySetting { min: number; max: number; fee: number }
+
 export default function AdminPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [analytics, setAnalytics] = useState<Analytics | null>(null)
@@ -112,6 +115,10 @@ export default function AdminPage() {
   const [closeTime, setCloseTime] = useState("23:00")
   const [storeSettingsLoading, setStoreSettingsLoading] = useState(false)
   const [isDeliveryAvailable, setIsDeliveryAvailable] = useState(true)
+  const [deliverySettings, setDeliverySettings] = useState<DeliverySetting[]>([]);
+  const [deliverySettingsLoading, setDeliverySettingsLoading] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [newInterval, setNewInterval] = useState<DeliverySetting>({ min: 0, max: 0, fee: 0 });
 
   const fetchOrders = async (date?: string) => {
     try {
@@ -355,6 +362,57 @@ export default function AdminPage() {
       setStoreSettingsLoading(false)
     }
   }
+
+  // Fetch delivery settings on mount
+  useEffect(() => {
+    fetch("/api/config?type=deliverySettings")
+      .then(res => res.json())
+      .then(data => setDeliverySettings(data.deliverySettings || []))
+      .catch(() => setDeliverySettings([]));
+  }, []);
+
+  const handleAddInterval = () => {
+    if (newInterval.max <= newInterval.min || newInterval.fee < 0) return;
+    setDeliverySettings([...deliverySettings, { ...newInterval }]);
+    setNewInterval({ min: 0, max: 0, fee: 0 });
+  };
+
+  const handleEditInterval = (idx: number) => {
+    setEditingIndex(idx);
+    setNewInterval(deliverySettings[idx]);
+  };
+
+  const handleSaveEdit = () => {
+    if (newInterval.max <= newInterval.min || newInterval.fee < 0) return;
+    setDeliverySettings(deliverySettings.map((d, i) => (i === editingIndex ? { ...newInterval } : d)));
+    setEditingIndex(null);
+    setNewInterval({ min: 0, max: 0, fee: 0 });
+  };
+
+  const handleRemoveInterval = (idx: number) => {
+    if (deliverySettings.length === 1) return;
+    setDeliverySettings(deliverySettings.filter((_, i) => i !== idx));
+  };
+
+  const handleSaveDeliverySettings = async () => {
+    setDeliverySettingsLoading(true);
+    try {
+      const res = await fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deliverySettings }),
+      });
+      if (res.ok) {
+        toast({ title: "Frais de livraison mis à jour", description: "Les intervalles ont été enregistrés." });
+      } else {
+        toast({ title: "Erreur", description: "Impossible d'enregistrer les intervalles.", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Erreur", description: "Impossible d'enregistrer les intervalles.", variant: "destructive" });
+    } finally {
+      setDeliverySettingsLoading(false);
+    }
+  };
 
   useEffect(() => {
     setMounted(true)
@@ -935,6 +993,73 @@ export default function AdminPage() {
               </Button>
               <span className="text-gray-500 ml-2">Actuel: <span className="font-semibold text-green-700">{openTime} – {closeTime}</span></span>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Paramètres des Frais de Livraison Section */}
+        <Card className="mb-8 border-2 border-green-600 shadow-lg rounded-xl">
+          <CardHeader>
+            <CardTitle>Paramètres des Frais de Livraison</CardTitle>
+            <CardDescription>Définissez les intervalles de distance et les frais associés (en DA).</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left border rounded-xl shadow-md overflow-hidden">
+                <thead className="bg-gray-100 text-gray-800 font-semibold sticky top-0 z-10">
+                  <tr>
+                    <th className="px-4 py-3">De (km)</th>
+                    <th className="px-4 py-3">À (km)</th>
+                    <th className="px-4 py-3">Frais (DA)</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {deliverySettings.map((interval, idx) => (
+                    <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                      {editingIndex === idx ? (
+                        <>
+                          <td className="px-4 py-2"><Input type="number" min={0} value={newInterval.min} onChange={e => setNewInterval({ ...newInterval, min: Number(e.target.value) })} className="w-20" /></td>
+                          <td className="px-4 py-2"><Input type="number" min={0} value={newInterval.max} onChange={e => setNewInterval({ ...newInterval, max: Number(e.target.value) })} className="w-20" /></td>
+                          <td className="px-4 py-2"><Input type="number" min={0} value={newInterval.fee} onChange={e => setNewInterval({ ...newInterval, fee: Number(e.target.value) })} className="w-24" /></td>
+                          <td className="px-4 py-2 text-right space-x-2">
+                            <Button size="icon" onClick={handleSaveEdit} className="bg-green-600 hover:bg-green-700 text-white"><Edit className="w-4 h-4" /></Button>
+                            <Button size="icon" variant="outline" onClick={() => setEditingIndex(null)}><span className="sr-only">Annuler</span>✕</Button>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-4 py-2 text-center">{interval.min}</td>
+                          <td className="px-4 py-2 text-center">{interval.max}</td>
+                          <td className="px-4 py-2 text-center">{interval.fee}</td>
+                          <td className="px-4 py-2 text-right space-x-2">
+                            <Button size="icon" variant="outline" onClick={() => handleEditInterval(idx)}><Edit className="w-4 h-4" /></Button>
+                            <Button size="icon" variant="destructive" onClick={() => handleRemoveInterval(idx)} disabled={deliverySettings.length === 1}><Trash2 className="w-4 h-4" /></Button>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                  {editingIndex === null && (
+                    <tr className="bg-green-50">
+                      <td className="px-4 py-2"><Input type="number" min={0} value={newInterval.min} onChange={e => setNewInterval({ ...newInterval, min: Number(e.target.value) })} className="w-20" /></td>
+                      <td className="px-4 py-2"><Input type="number" min={0} value={newInterval.max} onChange={e => setNewInterval({ ...newInterval, max: Number(e.target.value) })} className="w-20" /></td>
+                      <td className="px-4 py-2"><Input type="number" min={0} value={newInterval.fee} onChange={e => setNewInterval({ ...newInterval, fee: Number(e.target.value) })} className="w-24" /></td>
+                      <td className="px-4 py-2 text-right">
+                        <Button size="icon" onClick={handleAddInterval} disabled={newInterval.max <= newInterval.min || newInterval.fee < 0} className="bg-green-600 hover:bg-green-700 text-white"><Plus className="w-4 h-4" /></Button>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex justify-end mt-4">
+              <Button onClick={handleSaveDeliverySettings} disabled={deliverySettingsLoading} className="bg-green-600 hover:bg-green-700 text-white shadow rounded-lg">
+                {deliverySettingsLoading ? "Enregistrement..." : "Enregistrer les intervalles"}
+              </Button>
+            </div>
+            {deliverySettings.length === 0 && (
+              <div className="text-red-600 mt-2">Au moins un intervalle est requis.</div>
+            )}
           </CardContent>
         </Card>
 

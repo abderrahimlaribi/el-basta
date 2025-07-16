@@ -13,7 +13,15 @@ export async function GET(request: NextRequest) {
   if (type === "storeSettings") {
     return Response.json({ storeSettings: config.storeSettings || { openTime: "08:00", closeTime: "23:00" } })
   }
-  return Response.json({ serviceFees: config.serviceFees, promotedProducts: config.promotedProducts || [], storeSettings: config.storeSettings || { openTime: "08:00", closeTime: "23:00" } })
+  if (type === "deliverySettings") {
+    return Response.json({ deliverySettings: config.deliverySettings || [] })
+  }
+  return Response.json({ 
+    serviceFees: config.serviceFees, 
+    promotedProducts: config.promotedProducts || [], 
+    storeSettings: config.storeSettings || { openTime: "08:00", closeTime: "23:00" },
+    deliverySettings: config.deliverySettings || []
+  })
 }
 
 export async function POST(request: NextRequest) {
@@ -37,6 +45,11 @@ export async function POST(request: NextRequest) {
     }
     await fs.writeFile(CONFIG_PATH, JSON.stringify(config, null, 2))
     return Response.json({ storeSettings: config.storeSettings })
+  }
+  if (Array.isArray(body.deliverySettings)) {
+    config.deliverySettings = body.deliverySettings
+    await fs.writeFile(CONFIG_PATH, JSON.stringify(config, null, 2))
+    return Response.json({ deliverySettings: config.deliverySettings })
   }
   return Response.json({ error: "Invalid value" }, { status: 400 })
 } 

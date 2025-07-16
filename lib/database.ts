@@ -192,6 +192,8 @@ export async function createOrder(orderData: OrderCreate): Promise<{ order: Orde
     customerName: orderData.customerName,
     customerPhone: orderData.customerPhone,
     customerNotes: orderData.customerNotes,
+    deliveryFee: orderData.deliveryFee ?? 0,
+    serviceFees: orderData.serviceFees ?? 0,
   }
 
   console.log("📦 Creating order with tracking ID:", trackingId)
@@ -209,6 +211,8 @@ export async function createOrder(orderData: OrderCreate): Promise<{ order: Orde
         customerName: orderData.customerName,
         customerPhone: orderData.customerPhone,
         customerNotes: orderData.customerNotes,
+        deliveryFee: orderData.deliveryFee ?? 0,
+        serviceFees: orderData.serviceFees ?? 0,
       }
 
       const docRef = await addDoc(collection(db, "orders"), orderToCreate)
@@ -273,6 +277,8 @@ export async function getOrderByTrackingId(trackingId: string): Promise<Order | 
         customerName: data.customerName,
         customerPhone: data.customerPhone,
         customerNotes: data.customerNotes,
+        deliveryFee: typeof data.deliveryFee === 'number' ? data.deliveryFee : 0,
+        serviceFees: typeof data.serviceFees === 'number' ? data.serviceFees : 0,
       }
     } catch (error) {
       console.error("❌ Error getting order from Firebase:", error)
@@ -291,6 +297,8 @@ export async function getOrderByTrackingId(trackingId: string): Promise<Order | 
   const mockOrder = mockOrders.find((order) => order.trackingId === trackingId)
   if (mockOrder) {
     console.log("✅ Order found in mock storage")
+    if (typeof mockOrder.deliveryFee !== 'number') mockOrder.deliveryFee = 0;
+    if (typeof mockOrder.serviceFees !== 'number') mockOrder.serviceFees = 0;
   } else {
     console.log("❌ Order not found in mock storage")
   }
