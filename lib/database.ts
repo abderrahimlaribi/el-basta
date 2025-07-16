@@ -1,5 +1,5 @@
 import { db, isFirebaseConfigured, type Order, type OrderCreate, ensureDate } from "./firebase"
-import { collection, addDoc, getDocs, doc, updateDoc, query, where, orderBy, serverTimestamp, deleteDoc } from "firebase/firestore"
+import { collection, addDoc, getDocs, doc, updateDoc, query, where, orderBy, serverTimestamp, deleteDoc, setDoc, getDoc } from "firebase/firestore"
 
 // Mock data store for when Firebase is not configured
 const mockOrders: Order[] = []
@@ -584,4 +584,19 @@ export async function getProducts(): Promise<Product[]> {
   // Fall back to mock products
   console.log(`✅ Retrieved ${mockProducts.length} products from mock data`)
   return mockProducts
+}
+
+// CONFIG FIRESTORE SYNC
+export async function saveConfigToFirestore(config: any) {
+  if (!isFirebaseConfigured() || !db) throw new Error("Firebase not configured")
+  const configRef = doc(collection(db, "config"), "main")
+  await setDoc(configRef, config, { merge: true })
+}
+
+export async function fetchConfigFromFirestore() {
+  if (!isFirebaseConfigured() || !db) throw new Error("Firebase not configured")
+  const configRef = doc(collection(db, "config"), "main")
+  const snap = await getDoc(configRef)
+  if (!snap.exists()) throw new Error("Config not found in Firestore")
+  return snap.data()
 }
