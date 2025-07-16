@@ -1,10 +1,8 @@
 import { NextRequest } from "next/server"
-import { promises as fs } from "fs"
-const CONFIG_PATH = process.cwd() + "/config.json"
+import { fetchConfigFromFirestore, saveConfigToFirestore } from "@/lib/database"
 
 export async function GET(request: NextRequest) {
-  const raw = await fs.readFile(CONFIG_PATH, "utf-8")
-  const config = JSON.parse(raw)
+  const config = await fetchConfigFromFirestore()
   const url = new URL(request.url)
   const type = url.searchParams.get("type")
   if (type === "promotedProducts") {
@@ -16,9 +14,9 @@ export async function GET(request: NextRequest) {
   if (type === "deliverySettings") {
     return Response.json({ deliverySettings: config.deliverySettings || [] })
   }
-  return Response.json({ 
-    serviceFees: config.serviceFees, 
-    promotedProducts: config.promotedProducts || [], 
+  return Response.json({
+    serviceFees: config.serviceFees,
+    promotedProducts: config.promotedProducts || [],
     storeSettings: config.storeSettings || { openTime: "08:00", closeTime: "23:00" },
     deliverySettings: config.deliverySettings || []
   })
@@ -26,16 +24,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
-  const raw = await fs.readFile(CONFIG_PATH, "utf-8")
-  const config = JSON.parse(raw)
+  const config = await fetchConfigFromFirestore()
   if (typeof body.serviceFees === "number" && body.serviceFees >= 0) {
     config.serviceFees = body.serviceFees
-    await fs.writeFile(CONFIG_PATH, JSON.stringify(config, null, 2))
+    await saveConfigToFirestore(config)
     return Response.json({ serviceFees: config.serviceFees })
   }
   if (Array.isArray(body.promotedProducts)) {
     config.promotedProducts = body.promotedProducts
-    await fs.writeFile(CONFIG_PATH, JSON.stringify(config, null, 2))
+    await saveConfigToFirestore(config)
     return Response.json({ promotedProducts: config.promotedProducts })
   }
   if (body.storeSettings) {
@@ -43,12 +40,12 @@ export async function POST(request: NextRequest) {
       ...config.storeSettings,
       ...body.storeSettings
     }
-    await fs.writeFile(CONFIG_PATH, JSON.stringify(config, null, 2))
+    await saveConfigToFirestore(config)
     return Response.json({ storeSettings: config.storeSettings })
   }
   if (Array.isArray(body.deliverySettings)) {
     config.deliverySettings = body.deliverySettings
-    await fs.writeFile(CONFIG_PATH, JSON.stringify(config, null, 2))
+    await saveConfigToFirestore(config)
     return Response.json({ deliverySettings: config.deliverySettings })
   }
   return Response.json({ error: "Invalid value" }, { status: 400 })
