@@ -33,7 +33,7 @@ export function MenuItemCard({ id, name, description, price, image, category, st
     addItem({
       id,
       name,
-      price,
+      price: status === 'promotion' && typeof discountPrice === 'number' ? discountPrice : price,
       image,
       category,
     })
