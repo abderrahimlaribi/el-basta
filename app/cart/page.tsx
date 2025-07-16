@@ -253,7 +253,7 @@ export default function CartPage() {
         `Frais de service : ${serviceFees} DA`,
         `Total : ${totalWithFees} DA`,
       ].filter(Boolean).join("\n");
-      const message = `🛍️ *Nouvelle Commande - ElBasta*\n\n🆔 *Code de commande: ${data.trackingId}*\n\n📋 *Détails de la commande:*\n${orderDetails}\n\n${feeLines}\n\n👤 *Informations client:*\n• Nom: ${customerInfo.name}\n• Téléphone: ${customerInfo.phone}\n• Adresse: ${addressText}\n${customerInfo.notes ? `• Notes: ${customerInfo.notes}` : ""}\n\n🔍 *ID de suivi: ${data.trackingId}*\n📱 *Lien de suivi: ${typeof window !== "undefined" ? window.location.origin : ""}/suivi?tracking=${data.trackingId}*\n\nMerci pour votre commande ! 🙏`;
+      const message = `🛍️ *Nouvelle Commande - ElBasta*\n\n🆔 *Code de commande: ${data.trackingId}*\n\n📋 *Détails de la commande:*\n${orderDetails}\n\n${feeLines}\n\n👤 *Informations client:*\n• Nom: ${customerInfo.name}\n• Téléphone: ${customerInfo.phone}\n• Adresse: ${addressText}\n${customerInfo.notes ? `• Notes: ${customerInfo.notes}` : ""}\n\n🔍 *ID de suivi: ${data.trackingId}*\n📱 *Lien de suivi: ${typeof window !== "undefined" ? window.location.origin : ""}/suivi?tracking=${data.trackingId} *\n\nMerci pour votre commande ! 🙏`;
 
       const whatsappUrl = `https://wa.me/213665258642?text=${encodeURIComponent(message)}`
 
