@@ -120,3 +120,11 @@ body {
 .animate-fade-in-delay-3 {
   animation: fadeIn 1s ease-out 0.9s both;
 }
+
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+.animate-bounce-slow {
+  animation: bounce-slow 1.6s infinite;
+}

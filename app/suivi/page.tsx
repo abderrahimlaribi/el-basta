@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Search, Package, Clock, MapPin, CheckCircle, XCircle, Truck, ArrowLeft } from "lucide-react"
+import { Search, Package, Clock, MapPin, CheckCircle, XCircle, Truck, ArrowLeft, ArrowDown } from "lucide-react"
 import Link from "next/link"
 import { ensureDate } from "@/lib/firebase"
 
@@ -43,6 +43,17 @@ export default function TrackingPage() {
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [showScrollArrow, setShowScrollArrow] = useState(false);
+  const scrollArrowRef = useRef<HTMLDivElement>(null);
+  // Enhanced arrow style
+  const arrowGradient = "bg-gradient-to-b from-green-100 via-white to-green-50";
+  const arrowShadow = "shadow-xl";
+  const arrowGlow = "ring-2 ring-green-300/40";
+  const arrowAnim = "animate-bounce-slow";
+  // Custom bounce animation
+  // Add this to your global CSS if not present:
+  // @keyframes bounce-slow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+  // .animate-bounce-slow { animation: bounce-slow 1.6s infinite; }
 
   const handleSearch = async () => {
     if (!trackingId.trim()) {
@@ -75,6 +86,32 @@ export default function TrackingPage() {
       handleSearch()
     }
   }, [])
+
+  // Scroll arrow logic
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollY = window.scrollY;
+      const windowHeight = window.innerHeight;
+      const docHeight = document.documentElement.scrollHeight;
+      setShowScrollArrow(scrollY + windowHeight < docHeight - 40);
+    };
+    handleScroll();
+    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('resize', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
+    };
+  }, []);
+
+  const handleScrollArrowClick = () => {
+    const y = window.scrollY;
+    const windowHeight = window.innerHeight;
+    const docHeight = document.documentElement.scrollHeight;
+    let nextY = y + windowHeight * 0.8;
+    if (nextY > docHeight - windowHeight) nextY = docHeight;
+    window.scrollTo({ top: nextY, behavior: 'smooth' });
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -367,6 +404,23 @@ export default function TrackingPage() {
           </CardContent>
         </Card>
       </div>
+      {/* Scroll Down Arrow Indicator */}
+      {showScrollArrow && (
+        <div
+          ref={scrollArrowRef}
+          onClick={handleScrollArrowClick}
+          className={`fixed left-1/2 -translate-x-1/2 z-40 bottom-8 md:bottom-10 flex items-center justify-center cursor-pointer select-none ${arrowAnim}`}
+          style={{ pointerEvents: 'auto' }}
+          aria-label="Faire défiler vers le bas"
+        >
+         <div
+           className={`rounded-full ${arrowGradient} ${arrowShadow} ${arrowGlow} border border-green-200 p-3 md:p-4 hover:bg-green-50 transition-all duration-200 flex items-center justify-center`}
+           style={{ boxShadow: '0 6px 32px 0 rgba(34,197,94,0.10), 0 1.5px 8px 0 rgba(0,0,0,0.10)' }}
+         >
+           <ArrowDown className="w-8 h-8 md:w-10 md:h-10 text-green-700 drop-shadow" strokeWidth={2.5} />
+         </div>
+        </div>
+      )}
     </div>
   )
 }
