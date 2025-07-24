@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin-auth
+
+Sitemap: https://elbasta.store/sitemap.xml

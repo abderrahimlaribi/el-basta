@@ -284,9 +284,9 @@ const uploadImage = async (file) => {
 
 ## 🔗 Assets & Links
 
-- [Site officiel ElBasta](https://elbasta.dz)
+- [Site officiel ElBasta](https://elbasta.store)
 - [Facebook](https://www.facebook.com/profile.php?id=61552378694624)
-- [Instagram](https://www.instagram.com/elbasta.dz/)
+- [Instagram](https://www.instagram.com/elbasta.store/)
 - [Google Maps](https://www.google.com/maps/place/ELBASTA/@36.7338212,3.1742928,17z)
 - [Firebase Console](https://console.firebase.google.com/)
 - [Cloudinary Dashboard](https://cloudinary.com/console)
@@ -295,7 +295,7 @@ const uploadImage = async (file) => {
 ## 🚀 More
 
 - **Documentation technique** : [Wiki du projet](https://github.com/username/el-basta/wiki)
-- **Support** : dev@elbasta.dz
+- **Support** : dev@elbasta.store
 - **Issues** : [Créer un ticket](https://github.com/username/el-basta/issues)
 - **Licence** : MIT
 

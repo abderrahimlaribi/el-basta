@@ -1,6 +1,10 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import dynamic from 'next/dynamic'
+
+// Import structured data as a dynamic component with SSR enabled
+const CartStructuredData = dynamic(() => import('./structured-data'), { ssr: true })
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -378,6 +382,9 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-cream-50 pt-24">
+      {/* Structured Data */}
+      <CartStructuredData />
+
       <div className="max-w-4xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center space-x-4 mb-8">

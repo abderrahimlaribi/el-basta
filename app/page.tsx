@@ -1,6 +1,10 @@
 "use client"
 
 import Image from "next/image"
+import dynamic from 'next/dynamic'
+
+// Import structured data as a dynamic component with SSR disabled
+const HomeStructuredData = dynamic(() => import('./structured-data'), { ssr: true })
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -119,9 +123,12 @@ export default function TeaRoomLanding() {
 
   return (
     <div className="min-h-screen bg-cream-50 font-body">
+      {/* Structured Data */}
+      <HomeStructuredData />
+
       {/* Mobile Header */}
       <MobileHeader />
-      
+
       {/* Desktop Navigation */}
       <nav className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-white shadow-lg border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -531,7 +538,7 @@ export default function TeaRoomLanding() {
                     </div>
                     <div>
                       <p className="font-semibold text-amber-900 font-body">Email</p>
-                      <p className="text-amber-700 font-body">contact@elbasta.dz</p>
+                      <p className="text-amber-700 font-body">contact@elbasta.store</p>
                     </div>
                   </div>
                 </div>
@@ -560,7 +567,7 @@ export default function TeaRoomLanding() {
                     <Facebook className="w-6 h-6 text-white" />
                   </a>
                   <a
-                    href="https://www.instagram.com/elbasta.dz/"
+                    href="https://www.instagram.com/elbasta.store/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center cursor-pointer hover:bg-green-700 transition-colors"
@@ -595,7 +602,7 @@ export default function TeaRoomLanding() {
                 >
                   <Facebook className="w-6 h-6 text-cream-200 hover:text-green-400 cursor-pointer transition-colors" />
                 </a>
-                <a href="https://www.instagram.com/elbasta.dz/" target="_blank" rel="noopener noreferrer">
+                <a href="https://www.instagram.com/elbasta.store/" target="_blank" rel="noopener noreferrer">
                   <Instagram className="w-6 h-6 text-cream-200 hover:text-green-400 cursor-pointer transition-colors" />
                 </a>
               </div>
