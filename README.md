@@ -134,30 +134,44 @@ Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur.
 Créez les collections suivantes dans Firestore :
 
 ```
+
+/config
+-deliverySettings (array) // each item: { fee (number), min (number), max (number) }
+-promotedProducts (array) // array of product IDs (string)
+-serviceFees (number)
+-storeSettings (map) // { openTime (string), closeTime (string), isDeliveryAvailable (boolean) }
+
 /products
-  - id (string)
-  - name (string)
-  - description (string)
-  - price (number)
-  - category (string)
-  - image (string) // URL Cloudinary
-  - available (boolean)
-  - createdAt (timestamp)
+-id (string)
+-name (string)
+-description (string)
+-price (number)
+-discountPrice (number)
+-imageUrl (string)
+-category (string)
+-categoryId (string)
+-status (string) // e.g. "normal", "promotion", "new"
+-isAvailable (boolean)
+-createdAt (timestamp)
+-updatedAt (timestamp)
 
 /orders
-  - id (string)
-  - customerName (string)
-  - customerPhone (string)
-  - items (array)
-  - total (number)
-  - status (string) // "pending", "confirmed", "preparing", "ready", "delivered"
-  - createdAt (timestamp)
-  - updatedAt (timestamp)
+-id (string)
+-customerName (string)
+-customerPhone (string)
+-customerNotes (string)
+-deliveryAddress (string) // Google Maps link
+-estimatedTime (string)
+-items (array) // each item: {id (string), name (string), category (string), image (string), price (number), quantity (number)}
+-totalPrice (number)
+-status (string) // "pending", "confirmed", "preparing", "ready", "en cours de livraison", "delivered"
+-trackingId (string)
+-createdAt (timestamp)
+-updatedAt (timestamp)
 
 /categories
-  - id (string)
-  - name (string)
-  - order (number)
+-name (string)
+-slug (string)
 ```
 
 ### 5. Règles de sécurité Firestore
@@ -166,21 +180,24 @@ Créez les collections suivantes dans Firestore :
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Lecture publique pour les produits et catégories
-    match /products/{document} {
-      allow read: if true;
-      allow write: if request.auth != null; // Admin seulement
+    // Allow read and write access to orders collection
+    match /orders/{orderId} {
+      allow read, write: if true;
     }
-    
-    match /categories/{document} {
-      allow read: if true;
-      allow write: if request.auth != null; // Admin seulement
+
+    // Allow read and write access to products collection
+    match /products/{productId} {
+      allow read, write: if true;
     }
-    
-    // Commandes : création publique, modification admin
-    match /orders/{document} {
-      allow read, write: if request.auth != null; // Admin seulement
-      allow create: if true; // Clients peuvent créer
+
+    // Allow read and write access to categories collection
+    match /categories/{categoryId} {
+      allow read, write: if true;
+    }
+
+    // Allow read and write access to config collection
+    match /config/{docId} {
+      allow read, write: if true;
     }
   }
 }
