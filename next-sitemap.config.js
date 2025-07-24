@@ -3,7 +3,7 @@ module.exports = {
   siteUrl: 'https://elbasta.store',
   generateRobotsTxt: false, // We already have a custom robots.txt
   exclude: ['/admin*', '/admin-auth*', '/api/*'],
-  generateIndexSitemap: true,
+  generateIndexSitemap: false, // Prevent nested indexing issues
   outDir: 'public',
   changefreq: 'daily',
   priority: 0.7,
@@ -15,9 +15,6 @@ module.exports = {
         allow: '/',
         disallow: ['/admin', '/admin-auth', '/api'],
       },
-    ],
-    additionalSitemaps: [
-      'https://elbasta.store/sitemap.xml',
     ],
   },
 }
