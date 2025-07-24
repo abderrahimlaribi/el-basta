@@ -1,4 +1,4 @@
-git <div align="center">
+<div align="center">
   <br />
     <img src="public/images/hero-background.jpg" alt="ElBasta Project Banner" style="max-width: 100%; border-radius: 12px;" />
   <br />
@@ -117,4 +117,4 @@ Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur.
 
 <div align="center">
   <b>ElBasta</b> - Savourez des Moments Doux ☕🥐✨
-</div>
+</div> 
