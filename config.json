@@ -1,0 +1,34 @@
+{
+  "serviceFees": 50,
+  "promotedProducts": [
+    "qXm9Ucmy9UMHTu6lkzeK",
+    "XJnIEuP1G6hhaD1dotqB",
+    "icjCaf3LrXoufcdLhtI3",
+    "T0u206uaE4AbWo4AEeHw",
+    "TXAmmpFUABE1uUXhLYRU",
+    "AvriqWA4gwQMFg3yC93G",
+    "dWWqjiSLghXMfF8g6VgG"
+  ],
+  "storeSettings": {
+    "openTime": "08:00",
+    "closeTime": "23:30",
+    "isDeliveryAvailable": true
+  },
+  "deliverySettings": [
+    {
+      "min": 0,
+      "max": 30,
+      "fee": 300
+    },
+    {
+      "min": 30,
+      "max": 60,
+      "fee": 600
+    },
+    {
+      "min": 60,
+      "max": 100,
+      "fee": 1000
+    }
+  ]
+}
