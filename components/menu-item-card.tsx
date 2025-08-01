@@ -63,9 +63,10 @@ export function MenuItemCard({ id, name, description, price, image, category, st
         <Image
           src={image || "/placeholder.svg"}
           alt={name}
-          width={200}
-          height={200}
+          width={400}
+          height={300}
           className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
+          priority
         />
         {/* BADGES */}
         {status === 'new' && (
@@ -109,14 +110,7 @@ export function MenuItemCard({ id, name, description, price, image, category, st
         {storeClosed && (
           <span className="inline-block mb-2 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold">Magasin fermé</span>
         )}
-        
-        {/* Market Timing Info */}
-        <div className="flex items-center justify-center mb-3 p-2 bg-green-50 rounded-lg border border-green-200">
-          <Clock className="w-4 h-4 text-green-600 mr-2" />
-          <span className="text-xs text-green-700 font-medium">
-            Ouvert: {openTime} - {closeTime}
-          </span>
-        </div>
+
 
         <Button
           onClick={handleAddToCart}

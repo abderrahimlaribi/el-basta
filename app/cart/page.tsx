@@ -101,14 +101,15 @@ export default function CartPage() {
   }
 
   const validatePhone = (phone: string) => {
-    const phonePattern = /^0\d{9}$/
+    const phonePattern = /^0[5-7]\d{8}$/;
     if (!phonePattern.test(phone.trim())) {
-      setPhoneError("Numéro invalide. Veuillez entrer un numéro à 10 chiffres commençant par 0.")
-      return false
+      setPhoneError("Numéro invalide. Veuillez entrer un numéro à 10 chiffres commençant par 05, 06 ou 07.");
+      return false;
     }
-    setPhoneError("")
-    return true
-  }
+    setPhoneError("");
+    return true;
+  };
+
 
   // Show toast when switching to livraison
   const handleDeliveryMethodChange = (method: 'livraison' | 'surplace') => {
@@ -116,7 +117,8 @@ export default function CartPage() {
     if (method === 'livraison') {
       toast({
         title: 'Information',
-        description: 'Vous devez partager votre position pour la livraison.'
+        description: 'Vous devez partager votre position pour la livraison.',
+        duration: Infinity,
       });
     }
   };
@@ -145,7 +147,8 @@ export default function CartPage() {
             setLocationError("");
             toast({
               title: 'Livraison',
-              description: `Frais de livraison ajoutés au total : ${found.fee} DA`
+              description: `Frais de livraison ajoutés au total : ${found.fee} DA`,
+              duration: Infinity,
             });
           } else {
             setDeliveryFee(0);

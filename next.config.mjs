@@ -7,7 +7,8 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: true,
+    unoptimized: false,
+    domains: ['firebasestorage.googleapis.com', 'res.cloudinary.com'],
   },
 }
 

@@ -1,10 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { Leaf, Menu, X, Package } from "lucide-react"
+import { Menu, X, Package } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CartIcon } from "@/components/cart-icon"
 import Link from "next/link"
+import Image from "next/image"
 
 export function MobileHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -32,11 +33,10 @@ export function MobileHeader() {
         <div className="px-4 py-3">
           <div className="flex items-center justify-between">
             {/* Logo */}
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-                <Leaf className="w-5 h-5 text-white" />
+            <div className="flex items-center">
+              <div className="w-16 h-16 overflow-hidden">
+                <Image src="/logo.png" alt="ElBasta Logo" width={64} height={64} className="w-full h-full object-contain" />
               </div>
-              <span className="text-xl font-accent text-amber-900 font-bold drop-shadow-sm">ElBasta</span>
             </div>
 
             {/* Right side - Cart and Menu */}
@@ -65,11 +65,10 @@ export function MobileHeader() {
               <div className="p-6 h-full flex flex-col">
                 {/* Header with close button */}
                 <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
-                      <Leaf className="w-6 h-6 text-white" />
+                  <div className="flex items-center">
+                    <div className="w-20 h-20 overflow-hidden">
+                      <Image src="/logo.png" alt="ElBasta Logo" width={80} height={80} className="w-full h-full object-contain" />
                     </div>
-                    <span className="text-2xl font-accent text-amber-900 font-bold">ElBasta</span>
                   </div>
                   <Button
                     variant="ghost"
@@ -93,7 +92,7 @@ export function MobileHeader() {
                       {item.label}
                     </a>
                   ))}
-                  
+
                   {/* Suivi link */}
                   <Link
                     href="/suivi"

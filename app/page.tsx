@@ -8,7 +8,6 @@ const HomeStructuredData = dynamic(() => import('./structured-data'), { ssr: tru
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
-  Leaf,
   MapPin,
   Phone,
   Mail,
@@ -70,10 +69,15 @@ export default function TeaRoomLanding() {
         const promoData = await promoRes.json()
         const configData = await configRes.json()
         setCategories(catData.categories || [])
-        setProducts(prodData.products || [])
+        // Map imageUrl to image for compatibility with MenuItemCard component
+        const productsWithImages = (prodData.products || []).map(product => ({
+          ...product,
+          image: product.imageUrl || product.image || "/placeholder.svg"
+        }))
+        setProducts(productsWithImages)
         // Find promoted products by ID
         const promoIds = promoData.promotedProducts || []
-        setPromotedProducts((prodData.products || []).filter((p: Product) => promoIds.includes(p.id)))
+        setPromotedProducts(productsWithImages.filter((p: Product) => promoIds.includes(p.id)))
         setOpenTime(hours.openTime)
         setCloseTime(hours.closeTime)
         setStoreClosed(isStoreClosed(hours.openTime, hours.closeTime))
@@ -139,11 +143,10 @@ export default function TeaRoomLanding() {
       <nav className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-white shadow-lg border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
-                <Leaf className="w-6 h-6 text-white" />
+            <div className="flex items-center">
+              <div className="w-24 h-10 overflow-hidden">
+                <Image src="/logo.png" alt="ElBasta Logo" width={500} height={500} className="w-full h-full object-contain" />
               </div>
-              <span className="text-3xl font-accent text-amber-900 font-bold drop-shadow-sm">ElBasta</span>
             </div>
             <div className="flex items-center space-x-8">
               <a href="#home" className="text-amber-900 hover:text-green-600 transition-colors font-semibold px-3 py-2 rounded-lg hover:bg-green-50 drop-shadow-sm">
@@ -472,6 +475,7 @@ export default function TeaRoomLanding() {
                 alt="Image de Galerie ElBasta"
                 fill
                 className="object-cover"
+                priority
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
             </div>
@@ -504,6 +508,7 @@ export default function TeaRoomLanding() {
                   alt={`Galerie ElBasta ${index + 1}`}
                   fill
                   className="object-cover"
+                  loading="eager"
                 />
               </div>
             ))}
@@ -623,9 +628,10 @@ export default function TeaRoomLanding() {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
             <div className="col-span-1 md:col-span-2">
-              <div className="flex items-center space-x-3 mb-6">
-                <Leaf className="w-8 h-8 text-green-400" />
-                <span className="text-3xl font-accent">ElBasta</span>
+              <div className="flex items-center mb-6">
+                <div className="w-36 h-20 overflow-hidden">
+                  <Image src="/logo.png" alt="ElBasta Logo" width={120} height={120} className="w-full h-full object-contain" />
+                </div>
               </div>
               <p className="text-cream-200 leading-relaxed mb-6 font-body">
                 Votre sanctuaire paisible pour des thés premium, jus frais, crêpes artisanales et douceurs faites à la

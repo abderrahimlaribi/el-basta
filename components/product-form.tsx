@@ -17,7 +17,7 @@ interface Product {
   description: string
   price: number
   category: string
-  imageUrl: string
+  image: string
   status?: 'new' | 'promotion' | null
   discountPrice?: number
   isAvailable?: boolean
@@ -37,13 +37,13 @@ export function ProductForm({ product, onSubmit, onClose, loading, categories }:
     description: product?.description || "",
     price: product?.price || 0,
     categoryId: product?.categoryId || "",
-    imageUrl: product?.imageUrl || "",
+    image: product?.image || "",
     status: product?.status ?? 'none',
     discountPrice: product?.discountPrice ?? '',
     isAvailable: typeof product?.isAvailable === 'boolean' ? product.isAvailable : true,
   })
   const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState(product?.imageUrl || "")
+  const [imagePreview, setImagePreview] = useState(product?.image || "")
   const [uploading, setUploading] = useState(false)
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,19 +77,19 @@ export function ProductForm({ product, onSubmit, onClose, loading, categories }:
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!formData.name || !formData.description || !formData.price || !formData.categoryId) {
       alert("Please fill in all required fields")
       return
     }
 
     try {
-      let imageUrl = formData.imageUrl
+      let image = formData.image
 
       // Upload new image if selected
       if (imageFile) {
         setUploading(true)
-        imageUrl = await uploadImage(imageFile)
+        image = await uploadImage(imageFile)
         setUploading(false)
       }
 
@@ -98,7 +98,7 @@ export function ProductForm({ product, onSubmit, onClose, loading, categories }:
         description: formData.description,
         price: Number(formData.price),
         categoryId: formData.categoryId,
-        imageUrl,
+        image,
         status: formData.status === 'none' ? null : formData.status,
         discountPrice: formData.status === 'promotion' ? Number(formData.discountPrice) : undefined,
         isAvailable: formData.isAvailable,
@@ -137,7 +137,7 @@ export function ProductForm({ product, onSubmit, onClose, loading, categories }:
                       onClick={() => {
                         setImagePreview("")
                         setImageFile(null)
-                        setFormData(prev => ({ ...prev, imageUrl: "" }))
+                        setFormData(prev => ({ ...prev, image: "" }))
                       }}
                     >
                       <X className="h-3 w-3" />

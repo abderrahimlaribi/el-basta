@@ -14,7 +14,10 @@ export async function GET(request: NextRequest) {
         openTime: config.storeSettings?.openTime || "08:00",
         closeTime: config.storeSettings?.closeTime || "23:00",
         heroDescription: config.storeSettings?.heroDescription || "",
-        heroSubtitle: config.storeSettings?.heroSubtitle || ""
+        heroSubtitle: config.storeSettings?.heroSubtitle || "",
+        isDeliveryAvailable: typeof config.storeSettings?.isDeliveryAvailable === 'boolean' 
+          ? config.storeSettings.isDeliveryAvailable 
+          : true
       }
     })
   }
@@ -28,7 +31,10 @@ export async function GET(request: NextRequest) {
       openTime: config.storeSettings?.openTime || "08:00",
       closeTime: config.storeSettings?.closeTime || "23:00",
       heroDescription: config.storeSettings?.heroDescription || "",
-      heroSubtitle: config.storeSettings?.heroSubtitle || ""
+      heroSubtitle: config.storeSettings?.heroSubtitle || "",
+      isDeliveryAvailable: typeof config.storeSettings?.isDeliveryAvailable === 'boolean' 
+        ? config.storeSettings.isDeliveryAvailable 
+        : true
     },
     deliverySettings: config.deliverySettings || []
   })
