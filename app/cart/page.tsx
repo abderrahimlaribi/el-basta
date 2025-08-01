@@ -428,13 +428,16 @@ export default function CartPage() {
               <CardContent className="space-y-4">
                 {items.map((item) => (
                   <div key={item.id} className="flex flex-col sm:flex-row items-center sm:items-start space-y-2 sm:space-y-0 sm:space-x-4 p-4 bg-gray-50 rounded-lg">
-                    <Image
-                      src={item.image || "/placeholder.svg"}
-                      alt={item.name}
-                      width={90}
-                      height={90}
-                      className="rounded object-cover flex-shrink-0 mb-2 sm:mb-0 shadow-md border border-gray-200"
-                    />
+                    <div className="relative overflow-hidden rounded-lg shadow-md border border-gray-200 w-24 h-24 flex-shrink-0 mb-2 sm:mb-0">
+                      <Image
+                        src={item.image || "/placeholder.svg"}
+                        alt={item.name}
+                        width={96}
+                        height={96}
+                        className="w-full h-full object-cover"
+                        priority
+                      />
+                    </div>
                     <div className="flex-1 w-full">
                       <h3 className="font-semibold text-amber-900 font-body text-base sm:text-lg">{item.name}</h3>
                       <p className="text-sm text-amber-700 font-body">{item.category}</p>
