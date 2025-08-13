@@ -35,6 +35,7 @@ interface Order {
   customerNotes?: string
   deliveryFee?: number
   serviceFees?: number
+  locationName?: string
 }
 
 export default function TrackingPage() {
@@ -226,7 +227,7 @@ export default function TrackingPage() {
                     </Badge>
                   </div>
                 </div>
-                <p className="text-amber-700 font-body">Commandé le {formatDate(order.createdAt)}</p>
+                <p className="text-amber-700 font-body">Commandé le {formatDate(order.createdAt)}{order.locationName ? ` • Magasin: ${order.locationName}` : ''}</p>
               </CardHeader>
               <CardContent className="space-y-4">
                 {order.estimatedTime && (

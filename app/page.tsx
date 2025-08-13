@@ -29,11 +29,13 @@ import { CartIcon } from "@/components/cart-icon"
 import { MenuItemCard } from "@/components/menu-item-card"
 import { MobileHeader } from "@/components/mobile-header"
 import { MobileFab } from "@/components/mobile-fab"
+import { LocationSelector } from "@/components/location-selector"
 
 import Link from "next/link"
 import { getProducts, type Product } from "@/lib/database"
 import { fetchStoreHours, isStoreClosed } from '@/lib/utils'
 import { useCallback } from 'react'
+import { useCartStore } from "@/lib/cart-store"
 
 // Add types
 interface Category { id: string; name: string; slug: string }
@@ -51,33 +53,22 @@ export default function TeaRoomLanding() {
   const [storeClosed, setStoreClosed] = useState(false)
   const [heroDescription, setHeroDescription] = useState("");
   const [heroSubtitle, setHeroSubtitle] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState<any>(null);
+  const setCartLocation = useCartStore((state) => state.setLocation);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
       setError(null)
       try {
-        const [catRes, prodRes, promoRes, hours, configRes] = await Promise.all([
+        const [catRes, hours, configRes] = await Promise.all([
           fetch("/api/categories"),
-          fetch("/api/products"),
-          fetch("/api/config?type=promotedProducts"),
           fetchStoreHours(),
           fetch("/api/config?type=storeSettings")
         ])
         const catData = await catRes.json()
-        const prodData = await prodRes.json()
-        const promoData = await promoRes.json()
         const configData = await configRes.json()
         setCategories(catData.categories || [])
-        // Map imageUrl to image for compatibility with MenuItemCard component
-        const productsWithImages = (prodData.products || []).map(product => ({
-          ...product,
-          image: product.imageUrl || product.image || "/placeholder.svg"
-        }))
-        setProducts(productsWithImages)
-        // Find promoted products by ID
-        const promoIds = promoData.promotedProducts || []
-        setPromotedProducts(productsWithImages.filter((p: Product) => promoIds.includes(p.id)))
         setOpenTime(hours.openTime)
         setCloseTime(hours.closeTime)
         setStoreClosed(isStoreClosed(hours.openTime, hours.closeTime))
@@ -98,12 +89,84 @@ export default function TeaRoomLanding() {
     return () => clearInterval(interval)
   }, [])
 
-  // Group products by categoryId
+  // Fetch products when location changes
+  useEffect(() => {
+    const fetchProducts = async () => {
+      if (!selectedLocation) return
+      
+      console.log(`🛍️ Fetching products for location: ${selectedLocation.id} (${selectedLocation.name})`)
+      
+      try {
+        const [prodRes, promoRes] = await Promise.all([
+          fetch(`/api/products/location/${selectedLocation.id}`),
+          fetch("/api/config?type=promotedProducts")
+        ])
+        
+        console.log(`📡 Product API response status: ${prodRes.status}`)
+        
+        const prodData = await prodRes.json()
+        const promoData = await promoRes.json()
+        
+        console.log(`📦 Raw product data:`, prodData)
+        console.log(`🎯 Promoted products data:`, promoData)
+        
+        // Map products for compatibility with MenuItemCard component
+        const productsWithImages = (prodData.products || []).map((product: any) => ({
+          ...product,
+          image: product.imageUrl || product.image || "/placeholder.svg",
+          // isAvailable is already set by getProductsByLocation based on location-specific data
+        }))
+        
+        console.log(`🖼️ Processed products:`, productsWithImages)
+        setProducts(productsWithImages)
+        
+        // Find promoted products by ID (include all, both available and unavailable)
+        const promoIds = promoData.promotedProducts || []
+        setPromotedProducts(productsWithImages.filter((p: Product) => promoIds.includes(p.id)))
+      } catch (err) {
+        console.error("Error fetching products for location:", err)
+        setError("Erreur lors du chargement du menu pour cet emplacement. Veuillez réessayer.")
+      }
+    }
+    
+    fetchProducts()
+  }, [selectedLocation])
+
+  // Group products by category
   const productsByCategory: { [categoryId: string]: Product[] } = {}
   products.forEach(product => {
-    if (!productsByCategory[product.categoryId]) productsByCategory[product.categoryId] = []
-    productsByCategory[product.categoryId].push(product)
+    // Include all products (both available and unavailable)
+    // Find the category name from the categories array
+    const category = categories.find(c => c.id === product.category || c.name === product.category)
+    const categoryKey = category?.name || product.category || 'Uncategorized'
+    if (!productsByCategory[categoryKey]) productsByCategory[categoryKey] = []
+    productsByCategory[categoryKey].push(product)
   })
+
+  // Fallback categories if none are loaded
+  const fallbackCategories = [
+    { id: 'jus-naturels', name: 'Jus Naturels', slug: 'jus-naturels' },
+    { id: 'crepes', name: 'Crêpes', slug: 'crepes' },
+    { id: 'cappuccinos', name: 'Cappuccinos', slug: 'cappuccinos' },
+    { id: 'thes', name: 'Thés', slug: 'thes' }
+  ]
+  
+  const displayCategories = categories.length > 0 ? categories : fallbackCategories
+
+  // Filter out categories with no products at all
+  const availableCategories = displayCategories.filter(cat => {
+    const categoryProducts = productsByCategory[cat.name] || []
+    return categoryProducts.length > 0
+  })
+
+  // Debug logging
+  console.log('Products:', products.length)
+  console.log('Available products:', products.filter(p => p.isAvailable).length)
+  console.log('Unavailable products:', products.filter(p => !p.isAvailable).length)
+  console.log('Product categories:', products.map(p => p.category))
+  console.log('Available categories:', categories.map(c => ({ id: c.id, name: c.name })))
+  console.log('Products by category:', productsByCategory)
+  console.log('Available categories with products:', availableCategories.map(c => ({ name: c.name, count: productsByCategory[c.name]?.length || 0 })))
 
   const galleryImages = [
     "/images/gallery-interior.jpg",
@@ -131,6 +194,20 @@ export default function TeaRoomLanding() {
     })
   }
 
+  // Get store hours from selected location or fallback to global
+  const getLocationHours = () => {
+    if (selectedLocation?.openingHours) {
+      return {
+        openTime: selectedLocation.openingHours.openTime,
+        closeTime: selectedLocation.openingHours.closeTime
+      }
+    }
+    return { openTime, closeTime }
+  }
+
+  const locationHours = getLocationHours()
+  const isLocationClosed = isStoreClosed(locationHours.openTime, locationHours.closeTime)
+
   return (
     <div className="min-h-screen bg-cream-50 font-body">
       {/* Structured Data */}
@@ -138,6 +215,49 @@ export default function TeaRoomLanding() {
 
       {/* Mobile Header */}
       <MobileHeader />
+
+      {/* Location Selection - First Priority */}
+      <LocationSelector 
+        onLocationSelect={(location) => {
+          setSelectedLocation(location);
+          setCartLocation({ id: location.id, name: location.name, adminPhone: location.adminPhone, openingHours: location.openingHours, coordinates: location.coordinates, googleMapsUrl: location.googleMapsUrl, deliverySettings: location.deliverySettings });
+        }}
+        selectedLocation={selectedLocation}
+      />
+
+      {/* Location Information Display */}
+      {selectedLocation && (
+        <div className="bg-gradient-to-r from-green-50 to-amber-50 border-l-4 border-green-500 rounded-r-lg shadow-md p-4 sm:p-6 mb-6 sm:mb-8 mx-3 sm:mx-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg sm:text-2xl font-bold text-green-900 mb-2 truncate">
+                  🏪 {selectedLocation.name}
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 text-xs sm:text-sm">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-green-700 font-medium whitespace-nowrap">📞 Contact:</span>
+                    <span className="text-gray-700 truncate">{selectedLocation.adminPhone}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-green-700 font-medium whitespace-nowrap">🕒 Horaires:</span>
+                    <span className="text-gray-700 truncate">
+                      {selectedLocation.openingHours?.openTime || "08:00"} - {selectedLocation.openingHours?.closeTime || "23:00"}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-green-700 font-medium whitespace-nowrap">🚚 Livraison:</span>
+                    <span className={`text-xs sm:text-sm font-semibold ${selectedLocation.deliverySettings?.isDeliveryAvailable ? "text-green-600" : "text-red-600"}`}>
+                      {selectedLocation.deliverySettings?.isDeliveryAvailable ? "✅ Disponible" : "❌ Non disponible"}
+                    </span>
+                  </div>
+                </div>
+                {/* Removed minimum order and maximum distance display */}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Desktop Navigation */}
       <nav className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-white shadow-lg border-b border-gray-200">
@@ -190,7 +310,7 @@ export default function TeaRoomLanding() {
             {heroDescription || "Découvrez le mélange parfait de tranquillité et de goût avec nos thés soigneusement préparés, jus frais, crêpes artisanales et douceurs délicieuses."}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-delay-3">
-            {categories.map(cat => (
+            {displayCategories.map(cat => (
               <button
                 key={cat.id}
                 onClick={() => document.getElementById(cat.slug)?.scrollIntoView({ behavior: 'smooth' })}
@@ -204,23 +324,25 @@ export default function TeaRoomLanding() {
         </div>
       </section>
 
-      {/* Hero Timing Display */}
-      <section className="py-4 px-6 bg-gradient-to-r from-green-600 to-green-700 text-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center space-x-4">
-            <Clock className="w-6 h-6 text-white" />
-            <div className="text-center">
-              <h3 className="text-lg font-semibold font-body">Horaires d'Ouverture</h3>
-              <p className="text-xl font-bold font-body">
-                {openTime} - {closeTime}
-                {storeClosed && (
-                  <span className="ml-3 text-yellow-300 font-semibold">(Fermé actuellement)</span>
-                )}
-              </p>
+      {/* Hero Timing Display - only when a location is selected */}
+      {selectedLocation && (
+        <section className="py-4 px-6 bg-gradient-to-r from-green-600 to-green-700 text-white">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-center space-x-4">
+              <Clock className="w-6 h-6 text-white" />
+              <div className="text-center">
+                <h3 className="text-lg font-semibold font-body">Horaires d'Ouverture</h3>
+                <p className="text-xl font-bold font-body">
+                  {locationHours.openTime} - {locationHours.closeTime}
+                  {isLocationClosed && (
+                    <span className="ml-3 text-yellow-300 font-semibold">(Fermé actuellement)</span>
+                  )}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* About Section */}
       <section id="about" className="py-20 px-6 bg-cream-50">
@@ -257,33 +379,35 @@ export default function TeaRoomLanding() {
         </div>
       </section>
 
-      {/* Store Closed Banner */}
-      {storeClosed && (
+      {/* Store Closed Banner - only when a location is selected */}
+      {selectedLocation && isLocationClosed && (
         <div className="bg-red-100 text-red-800 text-center py-2 font-semibold">
-          Le magasin est actuellement fermé. Heures d'ouverture : {openTime} – {closeTime}.
+          Le magasin est actuellement fermé. Heures d'ouverture : {locationHours.openTime} – {locationHours.closeTime}.
         </div>
       )}
 
-      {/* Market Timing Display */}
-      <section className="py-8 px-6 bg-gradient-to-r from-green-50 to-amber-50 border-y-2 border-green-200">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center space-x-4">
-            <Clock className="w-6 h-6 text-green-600" />
-            <div className="text-center">
-              <h3 className="text-xl font-semibold text-amber-900 font-body">Horaires d'Ouverture</h3>
-              <p className="text-lg text-amber-700 font-body">
-                <span className="font-bold">{openTime}</span> - <span className="font-bold">{closeTime}</span>
-                {storeClosed && (
-                  <span className="ml-2 text-red-600 font-semibold">(Fermé actuellement)</span>
-                )}
-              </p>
+      {/* Market Timing Display - only when a location is selected */}
+      {selectedLocation && (
+        <section className="py-8 px-6 bg-gradient-to-r from-green-50 to-amber-50 border-y-2 border-green-200">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-center space-x-4">
+              <Clock className="w-6 h-6 text-green-600" />
+              <div className="text-center">
+                <h3 className="text-xl font-semibold text-amber-900 font-body">Horaires d'Ouverture</h3>
+                <p className="text-lg text-amber-700 font-body">
+                  <span className="font-bold">{locationHours.openTime}</span> - <span className="font-bold">{locationHours.closeTime}</span>
+                  {isLocationClosed && (
+                    <span className="ml-2 text-red-600 font-semibold">(Fermé actuellement)</span>
+                  )}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      {/* Promotion / New Products Section */}
-      {promotedProducts.length > 0 && (
+      {/* Promotion / New Products Section - Only show when location is selected and has promoted products */}
+      {selectedLocation && promotedProducts.length > 0 && (
         <section className="py-20 px-6 bg-gradient-to-br from-green-50 to-amber-50 border-y-4 border-green-400/30 shadow-xl">
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center gap-4 mb-10">
@@ -314,18 +438,18 @@ export default function TeaRoomLanding() {
                       id={item.id}
                       name={item.name}
                       description={item.description}
-                      price={Number(item.price)}
+                      price={typeof item.price === 'string' ? parseFloat(item.price.replace(' DA', '')) || 0 : Number(item.price) || 0}
                       image={item.image}
                       category={categories.find(c => c.name === item.category)?.name || ""}
                       status={item.status}
                       discountPrice={item.discountPrice}
-                      isAvailable={typeof item.isAvailable === 'boolean' ? item.isAvailable : true}
-                      storeClosed={storeClosed}
-                      openTime={openTime}
-                      closeTime={closeTime}
+                      storeClosed={isLocationClosed}
+                      openTime={locationHours.openTime}
+                      closeTime={locationHours.closeTime}
+                      locationId={selectedLocation?.id}
+                      locationName={selectedLocation?.name}
+                      isAvailable={item.isAvailable !== false}
                     />
-                    {/* Highlight badges for discount, new, limited */}
-                    {/* Removed item.discount, item.isNew, item.isLimited */}
                   </div>
                 ))}
               </div>
@@ -342,16 +466,63 @@ export default function TeaRoomLanding() {
         </section>
       )}
 
-      {/* Menu Section */}
-      <section id="menu" className="py-20 px-6 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-5xl md:text-6xl font-accent text-amber-900 mb-6">Notre Menu</h2>
-            <p className="text-lg text-amber-700 max-w-2xl mx-auto font-body leading-relaxed">
-              Découvrez notre sélection soigneusement choisie de thés, jus frais, crêpes et douceurs, tous préparés avec
-              les meilleurs ingrédients.
+      {/* No Promoted Products Message */}
+      {selectedLocation && promotedProducts.length === 0 && products.length > 0 && (
+        <section className="py-12 px-6 bg-amber-50 border-y border-amber-200">
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Sparkles className="w-8 h-8 text-amber-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-amber-800 mb-2">Aucune promotion en cours</h3>
+            <p className="text-amber-700 font-body">
+              Il n'y a actuellement aucune promotion ou nouveauté disponible à l'emplacement <strong>{selectedLocation.name}</strong>.
+            </p>
+            <p className="text-sm text-amber-600 mt-2">
+              Mais vous pouvez toujours explorer notre menu complet ci-dessous !
             </p>
           </div>
+        </section>
+      )}
+
+      {/* Location Required Message */}
+      {!selectedLocation && (
+        <section className="py-20 px-6 bg-gray-50">
+          <div className="max-w-7xl mx-auto text-center">
+            <h2 className="text-4xl font-accent text-amber-900 mb-6">Sélectionnez votre emplacement</h2>
+            <p className="text-lg text-amber-700 max-w-2xl mx-auto font-body leading-relaxed">
+              Veuillez sélectionner un emplacement ElBasta pour voir le menu et les prix disponibles dans votre région.
+            </p>
+          </div>
+        </section>
+      )}
+
+      {/* Menu Section */}
+      {selectedLocation && (
+        <section id="menu" className="py-20 px-6 bg-white">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-16">
+              <h2 className="text-5xl md:text-6xl font-accent text-amber-900 mb-6">Notre Menu - {selectedLocation.name}</h2>
+              <p className="text-lg text-amber-700 max-w-2xl mx-auto font-body leading-relaxed mb-4">
+                Découvrez notre sélection soigneusement choisie de thés, jus frais, crêpes et douceurs, tous préparés avec
+                les meilleurs ingrédients. Prix et disponibilité pour {selectedLocation.name}.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-full">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-sm font-medium text-green-700">
+                    {products.filter(p => p.isAvailable).length} produit{products.filter(p => p.isAvailable).length > 1 ? 's' : ''} disponible{products.filter(p => p.isAvailable).length > 1 ? 's' : ''}
+                  </span>
+                </div>
+                {products.filter(p => !p.isAvailable).length > 0 && (
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 rounded-full">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                    <span className="text-sm font-medium text-gray-600">
+                      {products.filter(p => !p.isAvailable).length} produit{products.filter(p => !p.isAvailable).length > 1 ? 's' : ''} indisponible{products.filter(p => !p.isAvailable).length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
 
           {loading ? (
             <div className="flex items-center justify-center py-20">
@@ -376,38 +547,82 @@ export default function TeaRoomLanding() {
                 </Button>
               </div>
             </div>
-          ) : categories.length === 0 ? (
+          ) : availableCategories.length === 0 ? (
             <div className="text-center py-20">
-              <p className="text-lg text-amber-700 font-body">Aucun produit disponible pour le moment.</p>
+              <div className="max-w-2xl mx-auto">
+                <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Package className="w-12 h-12 text-gray-400" />
+                </div>
+                <h3 className="text-2xl font-semibold text-amber-900 mb-4 font-body">Aucun produit trouvé</h3>
+                <p className="text-lg text-amber-700 font-body mb-6">
+                  Aucun produit n'est configuré pour l'emplacement <strong>{selectedLocation.name}</strong>.
+                </p>
+                <p className="text-sm text-amber-600 font-body mb-6">
+                  Veuillez vérifier plus tard ou contacter le restaurant pour plus d'informations.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Button 
+                    onClick={() => {
+                      if (typeof window !== "undefined") {
+                        window.location.reload()
+                      }
+                    }} 
+                    className="bg-amber-600 hover:bg-amber-700"
+                  >
+                    Actualiser la page
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setSelectedLocation(null)}
+                    className="border-amber-600 text-amber-600 hover:bg-amber-50"
+                  >
+                    Changer d'emplacement
+                  </Button>
+                </div>
+              </div>
             </div>
           ) : (
-            categories.map(cat => (
+            availableCategories.map(cat => (
               <div key={cat.id} id={cat.slug} className="mb-16">
                 <h3 className="text-4xl font-accent text-amber-900 mb-8 text-center">{cat.name}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {(productsByCategory[cat.id] || []).map(item => (
-                    <MenuItemCard
-                      key={item.id}
-                      id={item.id}
-                      name={item.name}
-                      description={item.description}
-                      price={Number(item.price)}
-                      image={item.image}
-                      category={cat.name}
-                      status={item.status}
-                      discountPrice={item.discountPrice}
-                      isAvailable={typeof item.isAvailable === 'boolean' ? item.isAvailable : true}
-                      storeClosed={storeClosed}
-                      openTime={openTime}
-                      closeTime={closeTime}
-                    />
-                  ))}
+                  {(productsByCategory[cat.name] || []).length > 0 ? (
+                    (productsByCategory[cat.name] || []).map(item => (
+                      <MenuItemCard
+                        key={item.id}
+                        id={item.id}
+                        name={item.name}
+                        description={item.description}
+                        price={typeof item.price === 'string' ? parseFloat(item.price.replace(' DA', '')) || 0 : Number(item.price) || 0}
+                        image={item.image}
+                        category={cat.name}
+                        status={item.status}
+                        discountPrice={item.discountPrice}
+                        storeClosed={isLocationClosed}
+                        openTime={locationHours.openTime}
+                        closeTime={locationHours.closeTime}
+                        locationId={selectedLocation?.id}
+                        locationName={selectedLocation?.name}
+                        isAvailable={item.isAvailable !== false}
+                      />
+                    ))
+                  ) : (
+                    <div className="col-span-full text-center py-8">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Package className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <p className="text-gray-500 font-body">
+                        Aucun produit disponible dans cette catégorie pour le moment.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             ))
           )}
         </div>
-      </section>
+        </section>
+      )}
 
       {/* How It Works Section */}
       <section className="py-20 px-6 bg-green-50">
@@ -689,12 +904,14 @@ export default function TeaRoomLanding() {
         </div>
       </footer>
 
-      {/* Mobile FAB */}
-      <MobileFab 
-        openTime={openTime}
-        closeTime={closeTime}
-        storeClosed={storeClosed}
-      />
+      {/* Mobile FAB - only when a location is selected */}
+      {selectedLocation && (
+        <MobileFab 
+          openTime={locationHours.openTime}
+          closeTime={locationHours.closeTime}
+          storeClosed={isLocationClosed}
+        />
+      )}
 
     </div>
   )

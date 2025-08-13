@@ -14,6 +14,7 @@ import { ensureDate } from "@/lib/firebase"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 import { ProductForm } from "@/components/product-form"
+import { LocationManager } from "@/components/location-manager"
 import Image from "next/image"
 import { format } from 'date-fns'
 import { useRef } from "react"
@@ -39,6 +40,8 @@ interface Order {
   phone?: string
   phoneNumber?: string
   customerPhone?: string
+  locationId?: string
+  locationName?: string
 }
 
 interface Analytics {
@@ -54,15 +57,18 @@ interface Product {
   id: string
   name: string
   description: string
-  price: number
   category?: string
   categoryId?: string
   imageUrl: string
   createdAt: Date
   updatedAt: Date
-  status?: 'new' | 'promotion' | null
-  discountPrice?: number
-  isAvailable: boolean
+  locationPrices?: Array<{
+    locationId: string
+    price: number
+    isAvailable: boolean
+    status?: 'new' | 'promotion' | null
+    discountPrice?: number
+  }>
 }
 
 // Category type
@@ -102,6 +108,7 @@ export default function AdminPage() {
   const [categoryLoading, setCategoryLoading] = useState(false)
   const [selectedDate, setSelectedDate] = useState(() => format(new Date(), 'yyyy-MM-dd'))
   const [selectedStatus, setSelectedStatus] = useState('all')
+  const [selectedLocationFilter, setSelectedLocationFilter] = useState('all')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null)
   const [serviceFees, setServiceFees] = useState<number | null>(null)
@@ -484,9 +491,11 @@ export default function AdminPage() {
   }
 
   // Product management functions
-  const handleCreateProduct = async (productData: Omit<Product, "id" | "createdAt" | "updatedAt">) => {
+  const handleCreateProduct = async (productData: { name: string; description: string; categoryId: string; imageUrl: string; locationPrices: Array<{ locationId: string; price: number; isAvailable: boolean; status?: 'new' | 'promotion' | null; discountPrice?: number }> }) => {
     setProductLoading(true)
     try {
+      console.log("Sending product data:", productData)
+      
       const response = await fetch("/api/products", {
         method: "POST",
         headers: {
@@ -495,7 +504,11 @@ export default function AdminPage() {
         body: JSON.stringify(productData),
       })
 
+      console.log("Response status:", response.status)
+      
       if (response.ok) {
+        const result = await response.json()
+        console.log("Success response:", result)
         await fetchProducts()
         setShowProductForm(false)
         toast({
@@ -504,13 +517,15 @@ export default function AdminPage() {
           variant: "default",
         })
       } else {
-        throw new Error("Failed to create product")
+        const errorData = await response.json().catch(() => ({}))
+        console.error("API Error response:", errorData)
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
       }
     } catch (error) {
       console.error("Error creating product:", error)
       toast({
         title: "Erreur",
-        description: "Impossible d'ajouter le produit. Veuillez réessayer.",
+        description: `Impossible d'ajouter le produit: ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
         variant: "destructive",
       })
     } finally {
@@ -518,7 +533,7 @@ export default function AdminPage() {
     }
   }
 
-  const handleUpdateProduct = async (productData: Omit<Product, "id" | "createdAt" | "updatedAt">) => {
+  const handleUpdateProduct = async (productData: { name: string; description: string; categoryId: string; imageUrl: string; locationPrices: Array<{ locationId: string; price: number; isAvailable: boolean; status?: 'new' | 'promotion' | null; discountPrice?: number }> }) => {
     if (!editingProduct) return
 
     setProductLoading(true)
@@ -643,9 +658,11 @@ export default function AdminPage() {
   }
 
   // Filtered orders by status
-  const filteredOrders = selectedStatus === 'all'
-    ? orders
-    : orders.filter(order => order.status === selectedStatus)
+  const filteredOrders = orders.filter(order => {
+    const statusOk = selectedStatus === 'all' || order.status === selectedStatus
+    const locationOk = selectedLocationFilter === 'all' || order.locationId === selectedLocationFilter || order.locationName === selectedLocationFilter
+    return statusOk && locationOk
+  })
 
   if (!mounted || loading) {
     return (
@@ -727,7 +744,7 @@ export default function AdminPage() {
                   max={format(new Date(), 'yyyy-MM-dd')}
                 />
               </div>
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
                 <Filter className="w-4 h-4 text-amber-700" />
                 <select
                   value={selectedStatus}
@@ -741,6 +758,25 @@ export default function AdminPage() {
                   <option value="Annulé">Annulé</option>
                 </select>
               </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Filter className="w-4 h-4 text-amber-700" />
+              <select
+                value={selectedLocationFilter}
+                onChange={e => setSelectedLocationFilter(e.target.value)}
+                className="border rounded px-2 py-1 font-body text-base focus:ring-2 focus:ring-green-200 focus:border-green-400 transition w-full sm:w-auto"
+              >
+                <option value="all">Tous les emplacements</option>
+                {/* Build location options from orders we have */}
+                {Array.from(new Set(orders.map(o => `${o.locationId || ''}::${o.locationName || ''}`)))
+                  .filter(key => key !== '::')
+                  .map(key => {
+                    const [id, name] = key.split('::')
+                    const value = id || name
+                    const label = name || id || 'Sans emplacement'
+                    return <option key={key} value={value}>{label}</option>
+                  })}
+              </select>
+            </div>
               <Button
                 onClick={refreshData}
                 disabled={refreshing}
@@ -765,6 +801,7 @@ export default function AdminPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>ID Suivi</TableHead>
+                  <TableHead>Magasin</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Articles</TableHead>
                   <TableHead>Total</TableHead>
@@ -777,6 +814,7 @@ export default function AdminPage() {
                 {filteredOrders.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell className="font-medium">{order.trackingId}</TableCell>
+                    <TableCell>{order.locationName || <span className="text-gray-400">-</span>}</TableCell>
                     <TableCell>{formatDate(order.createdAt)}</TableCell>
                     <TableCell>{order.items.length} article(s)</TableCell>
                     <TableCell>{formatPrice(order.totalPrice)}</TableCell>
@@ -1109,8 +1147,12 @@ export default function AdminPage() {
                   {/* Removed product image display */}
                   <div className="text-center mb-2">
                     <div className="font-semibold text-amber-900 text-base truncate w-32">{product.name}</div>
-                    <div className="text-xs text-gray-500">{product.price} DA</div>
-                    {!product.isAvailable && (
+                    <div className="text-xs text-gray-500">
+                      {product.locationPrices && product.locationPrices.length > 0 
+                        ? `${product.locationPrices.length} emplacement(s)` 
+                        : 'Aucun emplacement'}
+                    </div>
+                    {product.locationPrices && product.locationPrices.every(lp => !lp.isAvailable) && (
                       <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-gray-200 text-gray-500 text-xs font-semibold">Indisponible</span>
                     )}
                   </div>
@@ -1137,6 +1179,15 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
+        {/* Location Management Section */}
+        <div className="mt-12">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Gestion des Emplacements</h2>
+            <p className="text-gray-600">Gérez vos magasins et leurs coordonnées</p>
+          </div>
+          <LocationManager onLocationsChange={refreshData} />
+        </div>
+
         {/* Product Management Section */}
         <div className="mt-12">
           <div className="flex justify-between items-center mb-6">
@@ -1159,8 +1210,11 @@ export default function AdminPage() {
           {/* Products Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {products.map((product) => {
-              // Determine the current status value for the dropdown
-              const currentStatus = product.status ?? 'none'
+              // Get the first available location for display purposes
+              const firstLocation = product.locationPrices?.[0]
+              const hasPromotion = product.locationPrices?.some(lp => lp.status === 'promotion')
+              const hasNew = product.locationPrices?.some(lp => lp.status === 'new')
+              const allUnavailable = product.locationPrices && product.locationPrices.every(lp => !lp.isAvailable)
               return (
                 <Card key={product.id} className="overflow-hidden relative">
                   <div className="relative h-48 bg-gray-100">
@@ -1177,13 +1231,13 @@ export default function AdminPage() {
                       </div>
                     )}
                     {/* BADGES */}
-                    {product.status === 'new' && (
+                    {hasNew && (
                       <span className="absolute top-2 left-2 z-10"><Badge className="bg-green-600 text-white">Nouveau</Badge></span>
                     )}
-                    {product.status === 'promotion' && (
+                    {hasPromotion && (
                       <span className="absolute top-2 right-2 z-10"><Badge className="bg-red-600 text-white">Promo</Badge></span>
                     )}
-                    {!product.isAvailable && (
+                    {allUnavailable && (
                       <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-gray-200 text-gray-500 text-xs font-semibold">Indisponible actuellement</span>
                     )}
                   </div>
@@ -1192,13 +1246,17 @@ export default function AdminPage() {
                       <h3 className="font-semibold text-lg truncate">{product.name}</h3>
                       <p className="text-sm text-gray-600 line-clamp-2">{product.description}</p>
                       <div className="flex justify-between items-center">
-                        {product.status === 'promotion' && product.discountPrice ? (
-                          <>
-                            <span className="font-bold text-green-600">{product.discountPrice} DA</span>
-                            <span className="ml-2 px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-xs font-semibold line-through">{product.price} DA</span>
-                          </>
+                        {firstLocation ? (
+                          hasPromotion && firstLocation.discountPrice ? (
+                            <>
+                              <span className="font-bold text-green-600">{firstLocation.discountPrice} DA</span>
+                              <span className="ml-2 px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-xs font-semibold line-through">{firstLocation.price} DA</span>
+                            </>
+                          ) : (
+                            <span className="font-bold text-green-600">{firstLocation.price} DA</span>
+                          )
                         ) : (
-                          <span className="font-bold text-green-600">{product.price} DA</span>
+                          <span className="text-gray-500 text-sm">Aucun prix</span>
                         )}
                         <Badge key={product.id} variant="secondary">
                           {categories.find(c => c.id === (product.categoryId || product.category))?.name || "Sans catégorie"}

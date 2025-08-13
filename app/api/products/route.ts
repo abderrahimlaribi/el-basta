@@ -22,9 +22,15 @@ export interface Product {
 export interface ProductCreate {
   name: string
   description: string
-  price: number
   categoryId: string
   imageUrl: string
+  locationPrices?: Array<{
+    locationId: string
+    price: number
+    isAvailable: boolean
+    status?: 'new' | 'promotion' | null
+    discountPrice?: number
+  }>
 }
 
 // Get all products
@@ -42,14 +48,11 @@ export async function GET() {
           id: docData.id,
           name: data.name,
           description: data.description,
-          price: data.price,
           categoryId: data.categoryId,
           imageUrl: data.imageUrl,
           createdAt: data.createdAt?.toDate() || new Date(),
           updatedAt: data.updatedAt?.toDate() || new Date(),
-          status: data.status ?? null,
-          discountPrice: data.discountPrice ?? null,
-          isAvailable: typeof data.isAvailable === 'boolean' ? data.isAvailable : true,
+          locationPrices: data.locationPrices || [],
         }
       })
 
@@ -77,26 +80,30 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, description, price, categoryId, imageUrl, status, discountPrice, isAvailable } = body
+    const { name, description, categoryId, imageUrl, locationPrices } = body
 
-    console.log("📦 Creating new product:", { name, price, categoryId })
+    console.log("📦 Creating new product:", { name, categoryId, locationPrices })
 
-    if (!name || !description || !price || !categoryId || !imageUrl) {
+    if (!name || !description || !categoryId || !imageUrl) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       )
     }
 
-    const productData: ProductCreate & { status?: string | null, discountPrice?: number | null, isAvailable: boolean } = {
+    if (!locationPrices || !Array.isArray(locationPrices) || locationPrices.length === 0) {
+      return NextResponse.json(
+        { error: "At least one location price is required" },
+        { status: 400 }
+      )
+    }
+
+    const productData: ProductCreate = {
       name,
       description,
-      price: Number(price),
       categoryId,
       imageUrl,
-      status: typeof status !== 'undefined' ? status : null,
-      discountPrice: typeof discountPrice === 'number' ? discountPrice : null,
-      isAvailable: typeof isAvailable === 'boolean' ? isAvailable : true,
+      locationPrices,
     }
 
     if (isFirebaseConfigured() && db) {
@@ -118,7 +125,7 @@ export async function POST(request: NextRequest) {
         console.log("✅ Product created successfully in Firebase")
         console.log(`   📄 Document ID: ${docRef.id}`)
         console.log(`   🏷️ Name: ${name}`)
-        console.log(`   💰 Price: ${price} DA`)
+        console.log(`   📍 Locations: ${locationPrices.length}`)
 
         return NextResponse.json({ product: newProduct })
       } catch (error) {

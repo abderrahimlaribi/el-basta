@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -21,6 +21,19 @@ interface Product {
   status?: 'new' | 'promotion' | null
   discountPrice?: number
   isAvailable?: boolean
+  locationPrices?: Array<{
+    locationId: string
+    price: number
+    isAvailable: boolean
+  }>
+}
+
+interface Location {
+  id: string
+  name: string
+  googleMapsUrl: string
+  adminPhone: string
+  isActive: boolean
 }
 
 interface ProductFormProps {
@@ -35,16 +48,74 @@ export function ProductForm({ product, onSubmit, onClose, loading, categories }:
   const [formData, setFormData] = useState({
     name: product?.name || "",
     description: product?.description || "",
-    price: product?.price || 0,
     categoryId: product?.categoryId || "",
-    image: product?.image || "",
-    status: product?.status ?? 'none',
-    discountPrice: product?.discountPrice ?? '',
-    isAvailable: typeof product?.isAvailable === 'boolean' ? product.isAvailable : true,
+    imageUrl: product?.imageUrl || product?.image || "",
   })
   const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState(product?.image || "")
+  const [imagePreview, setImagePreview] = useState(product?.imageUrl || product?.image || "")
   const [uploading, setUploading] = useState(false)
+  const [locations, setLocations] = useState<Location[]>([])
+  const [locationPrices, setLocationPrices] = useState<Array<{
+    locationId: string
+    price: number
+    isAvailable: boolean
+    status?: 'new' | 'promotion' | null
+    discountPrice?: number
+  }>>(product?.locationPrices || [])
+  const [defaultPrice, setDefaultPrice] = useState(() => {
+    if (product?.locationPrices && product.locationPrices.length > 0) {
+      // Use the first location's price as default
+      return product.locationPrices[0].price
+    }
+    return 0
+  })
+
+  // Fetch locations on component mount
+  useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        const response = await fetch('/api/locations')
+        const data = await response.json()
+        setLocations(data.locations || [])
+        
+        // Initialize location prices for new products or update existing ones
+        if (data.locations) {
+          if (!product?.id) {
+            // New product - initialize with default prices
+            const initialLocationPrices = data.locations
+              .filter((loc: Location) => loc.isActive)
+              .map((loc: Location) => ({
+                locationId: loc.id,
+                price: defaultPrice,
+                isAvailable: true,
+                status: null,
+                discountPrice: undefined
+              }))
+            setLocationPrices(initialLocationPrices)
+          } else {
+            // Existing product - merge with existing location prices
+            const existingLocationPrices = product.locationPrices || []
+            const allLocationPrices = data.locations
+              .filter((loc: Location) => loc.isActive)
+                             .map((loc: Location) => {
+                 const existing = existingLocationPrices.find((lp: any) => lp.locationId === loc.id)
+                return existing || {
+                  locationId: loc.id,
+                  price: defaultPrice,
+                  isAvailable: true,
+                  status: null,
+                  discountPrice: undefined
+                }
+              })
+            setLocationPrices(allLocationPrices)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching locations:', error)
+      }
+    }
+    fetchLocations()
+  }, [product?.id, defaultPrice])
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -78,30 +149,33 @@ export function ProductForm({ product, onSubmit, onClose, loading, categories }:
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.name || !formData.description || !formData.price || !formData.categoryId) {
+    if (!formData.name || !formData.description || !formData.categoryId) {
       alert("Please fill in all required fields")
       return
     }
 
+    // Check if at least one location has a price
+    if (locationPrices.length === 0 || locationPrices.every(lp => lp.price <= 0)) {
+      alert("Please set a price for at least one location")
+      return
+    }
+
     try {
-      let image = formData.image
+      let imageUrl = formData.imageUrl
 
       // Upload new image if selected
       if (imageFile) {
         setUploading(true)
-        image = await uploadImage(imageFile)
+        imageUrl = await uploadImage(imageFile)
         setUploading(false)
       }
 
       await onSubmit({
         name: formData.name,
         description: formData.description,
-        price: Number(formData.price),
         categoryId: formData.categoryId,
-        image,
-        status: formData.status === 'none' ? null : formData.status,
-        discountPrice: formData.status === 'promotion' ? Number(formData.discountPrice) : undefined,
-        isAvailable: formData.isAvailable,
+        imageUrl: imageUrl,
+        locationPrices: locationPrices,
       })
     } catch (error) {
       console.error("Error submitting product:", error)
@@ -137,7 +211,7 @@ export function ProductForm({ product, onSubmit, onClose, loading, categories }:
                       onClick={() => {
                         setImagePreview("")
                         setImageFile(null)
-                        setFormData(prev => ({ ...prev, image: "" }))
+                        setFormData(prev => ({ ...prev, imageUrl: "" }))
                       }}
                     >
                       <X className="h-3 w-3" />
@@ -205,20 +279,8 @@ export function ProductForm({ product, onSubmit, onClose, loading, categories }:
             />
           </div>
 
-          {/* Price and Category */}
+          {/* Category and Default Price */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="price">Prix (DA) *</Label>
-              <Input
-                id="price"
-                type="number"
-                value={formData.price}
-                onChange={(e) => setFormData(prev => ({ ...prev, price: Number(e.target.value) }))}
-                placeholder="650"
-                min="0"
-                required
-              />
-            </div>
             <div className="space-y-2">
               <Label htmlFor="category">Catégorie *</Label>
               <Select
@@ -237,47 +299,179 @@ export function ProductForm({ product, onSubmit, onClose, loading, categories }:
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="defaultPrice">Prix par défaut (DA)</Label>
+              <Input
+                id="defaultPrice"
+                type="number"
+                value={defaultPrice}
+                onChange={(e) => setDefaultPrice(Number(e.target.value))}
+                placeholder="650"
+                min="0"
+              />
+            </div>
           </div>
 
-          {/* Status Dropdown */}
-          <div className="space-y-2">
-            <Label htmlFor="status">Statut</Label>
-            <select
-              id="status"
-              value={formData.status}
-              onChange={e => setFormData(prev => ({ ...prev, status: e.target.value }))}
-              className="border rounded px-2 py-1 w-full"
-            >
-              <option value="none">Aucun</option>
-              <option value="new">Nouveau</option>
-              <option value="promotion">Promotion</option>
-            </select>
-          </div>
-          {/* Availability Toggle */}
-          <div className="flex items-center gap-2">
-            <Label htmlFor="isAvailable">Disponible</Label>
-            <input
-              id="isAvailable"
-              type="checkbox"
-              checked={formData.isAvailable}
-              onChange={e => setFormData(prev => ({ ...prev, isAvailable: e.target.checked }))}
-              className="accent-green-600 w-5 h-5"
-            />
-            <span className="text-sm text-gray-500">{formData.isAvailable ? 'Disponible à la vente' : 'Indisponible'}</span>
-          </div>
-          {/* Discounted price input if promotion */}
-          {formData.status === 'promotion' && (
-            <div className="space-y-2">
-              <Label htmlFor="discountPrice">Prix promotionnel</Label>
-              <Input
-                id="discountPrice"
-                type="number"
-                min={1}
-                value={formData.discountPrice}
-                onChange={e => setFormData(prev => ({ ...prev, discountPrice: e.target.value }))}
-                placeholder="Prix promotionnel"
-                required
-              />
+
+
+          {/* Location-Specific Pricing */}
+          {locations.length > 0 && (
+            <div className="space-y-4">
+              <div className="border-t pt-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Prix et disponibilité par emplacement *</h3>
+                <p className="text-sm text-gray-600 mb-4">Définissez le prix et la disponibilité pour chaque emplacement. Au moins un emplacement doit avoir un prix défini.</p>
+                <div className="space-y-3">
+                  {locations.filter(loc => loc.isActive).map((location) => {
+                    const locationPrice = locationPrices.find(lp => lp.locationId === location.id)
+                    return (
+                      <div key={location.id} className="border rounded-lg p-4 bg-gray-50">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-medium text-gray-900">{location.name}</h4>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={locationPrice?.isAvailable ?? true}
+                              onChange={(e) => {
+                                const newLocationPrices = [...locationPrices]
+                                const existingIndex = newLocationPrices.findIndex(lp => lp.locationId === location.id)
+                                if (existingIndex >= 0) {
+                                  newLocationPrices[existingIndex].isAvailable = e.target.checked
+                                } else {
+                                  newLocationPrices.push({
+                                    locationId: location.id,
+                                    price: defaultPrice,
+                                    isAvailable: e.target.checked,
+                                    status: null,
+                                    discountPrice: undefined
+                                  })
+                                }
+                                setLocationPrices(newLocationPrices)
+                              }}
+                              className="accent-green-600 w-4 h-4"
+                            />
+                            <span className="text-sm text-gray-600">Disponible</span>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 gap-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label htmlFor={`price-${location.id}`} className="text-sm">Prix (DA)</Label>
+                              <Input
+                                id={`price-${location.id}`}
+                                type="number"
+                                value={locationPrice?.price ?? defaultPrice}
+                                onChange={(e) => {
+                                  const newLocationPrices = [...locationPrices]
+                                  const existingIndex = newLocationPrices.findIndex(lp => lp.locationId === location.id)
+                                  if (existingIndex >= 0) {
+                                    newLocationPrices[existingIndex].price = Number(e.target.value)
+                                  } else {
+                                                                      newLocationPrices.push({
+                                    locationId: location.id,
+                                    price: Number(e.target.value),
+                                    isAvailable: true,
+                                    status: null,
+                                    discountPrice: undefined
+                                  })
+                                  }
+                                  setLocationPrices(newLocationPrices)
+                                }}
+                                placeholder={defaultPrice.toString()}
+                                min="0"
+                                className="text-sm"
+                              />
+                            </div>
+                            <div className="flex items-end">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const newLocationPrices = [...locationPrices]
+                                  const existingIndex = newLocationPrices.findIndex(lp => lp.locationId === location.id)
+                                  if (existingIndex >= 0) {
+                                    newLocationPrices[existingIndex].price = defaultPrice
+                                  } else {
+                                                                      newLocationPrices.push({
+                                    locationId: location.id,
+                                    price: defaultPrice,
+                                    isAvailable: true,
+                                    status: null,
+                                    discountPrice: undefined
+                                  })
+                                  }
+                                  setLocationPrices(newLocationPrices)
+                                }}
+                                className="text-xs"
+                              >
+                                Utiliser le prix par défaut
+                              </Button>
+                            </div>
+                          </div>
+                          
+                          {/* Status and Discount Price */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label htmlFor={`status-${location.id}`} className="text-sm">Statut</Label>
+                              <select
+                                id={`status-${location.id}`}
+                                value={locationPrice?.status ?? 'none'}
+                                onChange={(e) => {
+                                  const newLocationPrices = [...locationPrices]
+                                  const existingIndex = newLocationPrices.findIndex(lp => lp.locationId === location.id)
+                                  if (existingIndex >= 0) {
+                                    newLocationPrices[existingIndex].status = e.target.value === 'none' ? null : e.target.value as 'new' | 'promotion'
+                                  } else {
+                                    newLocationPrices.push({
+                                      locationId: location.id,
+                                      price: defaultPrice,
+                                      isAvailable: true,
+                                      status: e.target.value === 'none' ? null : e.target.value as 'new' | 'promotion'
+                                    })
+                                  }
+                                  setLocationPrices(newLocationPrices)
+                                }}
+                                className="border rounded px-2 py-1 w-full text-sm"
+                              >
+                                <option value="none">Aucun</option>
+                                <option value="new">Nouveau</option>
+                                <option value="promotion">Promotion</option>
+                              </select>
+                            </div>
+                            <div>
+                              <Label htmlFor={`discount-${location.id}`} className="text-sm">Prix promotionnel</Label>
+                              <Input
+                                id={`discount-${location.id}`}
+                                type="number"
+                                min="0"
+                                value={locationPrice?.discountPrice ?? ''}
+                                onChange={(e) => {
+                                  const newLocationPrices = [...locationPrices]
+                                  const existingIndex = newLocationPrices.findIndex(lp => lp.locationId === location.id)
+                                  if (existingIndex >= 0) {
+                                    newLocationPrices[existingIndex].discountPrice = e.target.value ? Number(e.target.value) : undefined
+                                  } else {
+                                    newLocationPrices.push({
+                                      locationId: location.id,
+                                      price: defaultPrice,
+                                      isAvailable: true,
+                                      discountPrice: e.target.value ? Number(e.target.value) : undefined
+                                    })
+                                  }
+                                  setLocationPrices(newLocationPrices)
+                                }}
+                                placeholder="Prix promotionnel"
+                                className="text-sm"
+                                disabled={locationPrice?.status !== 'promotion'}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
           )}
 

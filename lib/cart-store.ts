@@ -8,25 +8,45 @@ export interface CartItem {
   image: string
   quantity: number
   category: string
+  locationId?: string
+  locationName?: string
 }
 
 interface CartStore {
   items: CartItem[]
+  selectedLocation: { id: string; name: string; adminPhone?: string; openingHours?: { openTime: string; closeTime: string }; coordinates?: { lat: number; lng: number }; googleMapsUrl?: string ; deliverySettings?: { isDeliveryAvailable: boolean; }; } | null
+  setLocation: (location: { id: string; name: string; adminPhone?: string; openingHours?: { openTime: string; closeTime: string }; coordinates?: { lat: number; lng: number }; googleMapsUrl?: string ; deliverySettings?: { isDeliveryAvailable: boolean; }; } | null) => void
   addItem: (item: Omit<CartItem, "quantity">) => void
   removeItem: (id: string) => void
   updateQuantity: (id: string, quantity: number) => void
   clearCart: () => void
   getTotalItems: () => number
   getTotalPrice: () => number
+  clearCartForLocation: (locationId: string) => void
 }
 
 export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
       items: [],
+      selectedLocation: null,
+
+      setLocation: (location) => {
+        set({ selectedLocation: location })
+        // Clear cart when changing locations
+        if (location) {
+          set({ items: [] })
+        }
+      },
 
       addItem: (newItem) => {
         set((state) => {
+          // Check if item is from the same location
+          if (state.selectedLocation && newItem.locationId && newItem.locationId !== state.selectedLocation.id) {
+            console.warn("Cannot add item from different location")
+            return state
+          }
+
           const existingItem = state.items.find((item) => item.id === newItem.id)
 
           if (existingItem) {
@@ -62,6 +82,12 @@ export const useCartStore = create<CartStore>()(
 
       clearCart: () => {
         set({ items: [] })
+      },
+
+      clearCartForLocation: (locationId: string) => {
+        set((state) => ({
+          items: state.items.filter((item) => item.locationId !== locationId),
+        }))
       },
 
       getTotalItems: () => {

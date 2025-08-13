@@ -108,6 +108,8 @@ export interface Order {
   customerNotes?: string
   deliveryFee?: number
   serviceFees?: number
+  locationId?: string
+  locationName?: string
 }
 
 export interface OrderCreate {
@@ -120,6 +122,8 @@ export interface OrderCreate {
   customerNotes?: string
   deliveryFee?: number
   serviceFees?: number
+  locationId?: string
+  locationName?: string
 }
 
 // Utility function to ensure dates are properly converted

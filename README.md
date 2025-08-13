@@ -53,7 +53,7 @@
 - **Performance** : SSG/ISR, images optimisées, Lighthouse 95+, lazy loading, CDN Vercel.
 - **Accessibilité** : Composants ARIA, navigation clavier, contrastes, alt images, heading hierarchy.
 - **Design responsive** : Mobile-first, breakpoints optimisés, expérience fluide sur tous supports.
-- **Intégrations** : Firebase Firestore, WhatsApp, Google Maps, Cloudinary, réseaux sociaux.
+- **Intégrations** : Firebase Firestore, WhatsApp, Cloudinary, réseaux sociaux.
 - **Sécurité** : Auth admin, validation côté client, bonnes pratiques Next.js.
 - **Extensible** : Architecture modulaire, hooks personnalisés, composants réutilisables.
 
@@ -141,6 +141,16 @@ Créez les collections suivantes dans Firestore :
 -serviceFees (number)
 -storeSettings (map) // { openTime (string), closeTime (string), isDeliveryAvailable (boolean) }
 
+/locations
+-id (string)
+-name (string)
+-address (string)
+-coordinates (map) // { lat (number), lng (number) }
+-adminPhone (string)
+-isActive (boolean)
+-createdAt (timestamp)
+-updatedAt (timestamp)
+
 /products
 -id (string)
 -name (string)
@@ -152,6 +162,7 @@ Créez les collections suivantes dans Firestore :
 -categoryId (string)
 -status (string) // e.g. "normal", "promotion", "new"
 -isAvailable (boolean)
+-locationPrices (array) // each item: { locationId (string), price (number), isAvailable (boolean) }
 -createdAt (timestamp)
 -updatedAt (timestamp)
 
@@ -162,10 +173,12 @@ Créez les collections suivantes dans Firestore :
 -customerNotes (string)
 -deliveryAddress (string) // Google Maps link
 -estimatedTime (string)
--items (array) // each item: {id (string), name (string), category (string), image (string), price (number), quantity (number)}
+-items (array) // each item: {id (string), name (string), category (string), image (string), price (number), quantity (number), locationId (string), locationName (string)}
 -totalPrice (number)
 -status (string) // "pending", "confirmed", "preparing", "ready", "en cours de livraison", "delivered"
 -trackingId (string)
+-locationId (string) // ID of the selected store location
+-locationName (string) // Name of the selected store location
 -createdAt (timestamp)
 -updatedAt (timestamp)
 
@@ -197,6 +210,11 @@ service cloud.firestore {
 
     // Allow read and write access to config collection
     match /config/{docId} {
+      allow read, write: if true;
+    }
+
+    // Allow read and write access to locations collection
+    match /locations/{locationId} {
       allow read, write: if true;
     }
   }

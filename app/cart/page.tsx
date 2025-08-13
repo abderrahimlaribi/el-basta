@@ -48,8 +48,76 @@ export default function CartPage() {
   const [openTime, setOpenTime] = useState('08:00');
   const [closeTime, setCloseTime] = useState('23:00');
   const [storeClosed, setStoreClosed] = useState(false);
+  const selectedLocation = useCartStore((state) => state.selectedLocation)
+  
+  // Derive base coords primarily from googleMapsUrl; fallback to stored coordinates, then default
+  const getBaseCoords = () => {
+    // 1) Parse coordinates from Google Maps URL patterns
+    if (selectedLocation?.googleMapsUrl) {
+      const raw = selectedLocation.googleMapsUrl
+      try {
+        // a) @lat,lon in URL path
+        const atMatch = raw.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
+        if (atMatch && atMatch.length >= 3) {
+          const lat = parseFloat(atMatch[1])
+          const lon = parseFloat(atMatch[2])
+          if (!isNaN(lat) && !isNaN(lon)) return { lat, lon }
+        }
+        const url = new URL(raw)
+        // b) ll=lat,lon param
+        const ll = url.searchParams.get('ll')
+        if (ll) {
+          const [latStr, lonStr] = ll.split(',')
+          const lat = parseFloat(latStr)
+          const lon = parseFloat(lonStr)
+          if (!isNaN(lat) && !isNaN(lon)) return { lat, lon }
+        }
+        // c) q=lat,lon or q=loc:lat,lon param
+        const q = url.searchParams.get('q')
+        if (q) {
+          const qDecoded = decodeURIComponent(q)
+          const normalized = qDecoded.includes(':') ? qDecoded.split(':').slice(-1)[0] : qDecoded
+          const parts = normalized.split(',')
+          if (parts.length >= 2) {
+            const lat = parseFloat(parts[0])
+            const lon = parseFloat(parts[1])
+            if (!isNaN(lat) && !isNaN(lon)) return { lat, lon }
+          }
+          // d) Another @lat,lon pattern inside q value
+          const qAt = qDecoded.match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/)
+          if (qAt && qAt.length >= 3) {
+            const lat = parseFloat(qAt[1])
+            const lon = parseFloat(qAt[2])
+            if (!isNaN(lat) && !isNaN(lon)) return { lat, lon }
+          }
+        }
+
+        // e) !3d<lat>!4d<lng> pattern
+        const d3d4d = raw.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)
+        if (d3d4d && d3d4d.length >= 3) {
+          const lat = parseFloat(d3d4d[1])
+          const lon = parseFloat(d3d4d[2])
+          if (!isNaN(lat) && !isNaN(lon)) return { lat, lon }
+        }
+
+        // f) !2d<lng>!3d<lat> pattern (note the order)
+        const d2d3d = raw.match(/!2d(-?\d+\.\d+)!3d(-?\d+\.\d+)/)
+        if (d2d3d && d2d3d.length >= 3) {
+          const lon = parseFloat(d2d3d[1])
+          const lat = parseFloat(d2d3d[2])
+          if (!isNaN(lat) && !isNaN(lon)) return { lat, lon }
+        }
+      } catch {}
+    }
+    // 2) Explicit coordinates from DB
+    if (selectedLocation?.coordinates) {
+      return { lat: selectedLocation.coordinates.lat, lon: selectedLocation.coordinates.lng }
+    }
+    return DEFAULT_STORE_COORDS
+  }
   const [isDeliveryAvailable, setIsDeliveryAvailable] = useState(true);
-  const STORE_COORDS = { lat: 36.7338212, lon: 3.1742928 };
+  // Default fallback to Alger centre if no location selected or no coordinates
+  const DEFAULT_STORE_COORDS = { lat: 36.7338212, lon: 3.1742928 };
   const [deliverySettings, setDeliverySettings] = useState<DeliverySetting[]>([]);
   const [deliveryFee, setDeliveryFee] = useState(0);
   const [userCoords, setUserCoords] = useState<{ lat: number; lon: number } | null>(null);
@@ -60,37 +128,61 @@ export default function CartPage() {
 
   useEffect(() => {
     const getHoursAndFees = async () => {
-      const hours = await fetchStoreHours()
-      setOpenTime(hours.openTime)
-      setCloseTime(hours.closeTime)
-      setStoreClosed(isStoreClosed(hours.openTime, hours.closeTime))
+      // Use location-specific hours if available
+      if (selectedLocation?.openingHours) {
+        setOpenTime(selectedLocation.openingHours.openTime)
+        setCloseTime(selectedLocation.openingHours.closeTime)
+        setStoreClosed(isStoreClosed(selectedLocation.openingHours.openTime, selectedLocation.openingHours.closeTime))
+      } else {
+        const hours = await fetchStoreHours()
+        setOpenTime(hours.openTime)
+        setCloseTime(hours.closeTime)
+        setStoreClosed(isStoreClosed(hours.openTime, hours.closeTime))
+      }
       // Also fetch service fees, delivery availability, and delivery settings
       const res = await fetch("/api/config");
       const data = await res.json();
+      const isDeliveryAvailable = selectedLocation?.deliverySettings?.isDeliveryAvailable;
       setServiceFees(data.serviceFees || 0);
+
+      setIsDeliveryAvailable(
+          typeof isDeliveryAvailable === "boolean"
+          ? isDeliveryAvailable
+          : true
+      )
+      /*
       setIsDeliveryAvailable(
         typeof data.storeSettings?.isDeliveryAvailable === "boolean"
           ? data.storeSettings.isDeliveryAvailable
           : true
       );
+      */
+
+
       setDeliverySettings(data.deliverySettings || []);
     };
     getHoursAndFees();
     const interval = setInterval(getHoursAndFees, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedLocation]);
 
   useEffect(() => {
     const getHours = async () => {
-      const hours = await fetchStoreHours()
-      setOpenTime(hours.openTime)
-      setCloseTime(hours.closeTime)
-      setStoreClosed(isStoreClosed(hours.openTime, hours.closeTime))
+      if (selectedLocation?.openingHours) {
+        setOpenTime(selectedLocation.openingHours.openTime)
+        setCloseTime(selectedLocation.openingHours.closeTime)
+        setStoreClosed(isStoreClosed(selectedLocation.openingHours.openTime, selectedLocation.openingHours.closeTime))
+      } else {
+        const hours = await fetchStoreHours()
+        setOpenTime(hours.openTime)
+        setCloseTime(hours.closeTime)
+        setStoreClosed(isStoreClosed(hours.openTime, hours.closeTime))
+      }
     }
     getHours()
     const interval = setInterval(getHours, 60000)
     return () => clearInterval(interval)
-  }, []);
+  }, [selectedLocation]);
 
   const handleQuantityChange = (id: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -140,7 +232,8 @@ export default function CartPage() {
         setLocationUrl(url);
         setLocationLoading(false);
         if (deliverySettings.length >= 0) {
-          const distance = getDistanceKm(latitude, longitude, STORE_COORDS.lat, STORE_COORDS.lon);
+          const base = getBaseCoords();
+          const distance = getDistanceKm(latitude, longitude, base.lat, base.lon);
           const found = deliverySettings.find((d) => distance >= d.min && distance < d.max);
           if (found) {
             setDeliveryFee(found.fee);
@@ -166,7 +259,8 @@ export default function CartPage() {
   useEffect(() => {
     // If userCoords or deliverySettings change, recalculate delivery fee
     if (userCoords && deliverySettings.length > 0 && deliveryMethod === "livraison") {
-      const distance = getDistanceKm(userCoords.lat, userCoords.lon, STORE_COORDS.lat, STORE_COORDS.lon);
+      const base = getBaseCoords();
+      const distance = getDistanceKm(userCoords.lat, userCoords.lon, base.lat, base.lon);
       console.log("User position:", userCoords.lat, userCoords.lon);
       console.log("Calculated distance (km):", distance);
       console.log("Delivery intervals from DB:", deliverySettings);
@@ -247,6 +341,8 @@ export default function CartPage() {
         customerName: customerInfo.name,
         customerPhone: customerInfo.phone,
         customerNotes: customerInfo.notes,
+        locationId: selectedLocation?.id,
+        locationName: selectedLocation?.name,
       }
 
       const response = await fetch("/api/orders", {
@@ -274,9 +370,22 @@ export default function CartPage() {
         `Frais de service : ${serviceFees} DA`,
         `Total : ${totalWithFees} DA`,
       ].filter(Boolean).join("\n");
-      const message = `🛍️ *Nouvelle Commande - ElBasta*\n\n🆔 *Code de commande: ${data.trackingId}*\n\n📋 *Détails de la commande:*\n${orderDetails}\n\n${feeLines}\n\n👤 *Informations client:*\n• Nom: ${customerInfo.name}\n• Téléphone: ${customerInfo.phone}\n• Adresse: ${addressText}\n${customerInfo.notes ? `• Notes: ${customerInfo.notes}` : ""}\n\n🔍 *ID de suivi: ${data.trackingId}*\n📱 *Lien de suivi: ${typeof window !== "undefined" ? window.location.origin : ""}/suivi?tracking=${data.trackingId} *\n\nMerci pour votre commande ! 🙏`;
+      const message = `🛍️ *Nouvelle Commande - ElBasta*\n\n🏪 *Magasin*: ${selectedLocation?.name || "(non spécifié)"}\n🆔 *Code de commande*: ${data.trackingId}\n\n📋 *Détails de la commande:*\n${orderDetails}\n\n${feeLines}\n\n👤 *Informations client:*\n• Nom: ${customerInfo.name}\n• Téléphone: ${customerInfo.phone}\n• Adresse: ${addressText}\n${customerInfo.notes ? `• Notes: ${customerInfo.notes}` : ""}\n\n🔍 *ID de suivi*: ${data.trackingId}\n📱 *Lien de suivi*: ${typeof window !== "undefined" ? window.location.origin : ""}/suivi?tracking=${data.trackingId} \n\nMerci pour votre commande ! 🙏`;
 
-      const whatsappUrl = `https://wa.me/213665258642?text=${encodeURIComponent(message)}`
+      // Determine destination WhatsApp number from selected location's adminPhone
+      const rawPhone = selectedLocation?.adminPhone || "+213665258642"
+      // Normalize phone: keep digits, convert leading 0xxxxxxxxx to 213xxxxxxxxx
+      const digits = (rawPhone.match(/\d+/g) || []).join("")
+      let intl = digits
+      if (digits.startsWith("0") && digits.length === 10) {
+        intl = `213${digits.slice(1)}`
+      } else if (digits.startsWith("213") && digits.length === 12) {
+        intl = digits
+      } else if (digits.length >= 9 && !digits.startsWith("213")) {
+        // Best effort: if missing country code, prepend 213
+        intl = `213${digits.replace(/^0+/, "")}`
+      }
+      const whatsappUrl = `https://wa.me/${intl}?text=${encodeURIComponent(message)}`
 
       // Clear cart
       clearCart()
@@ -400,7 +509,8 @@ export default function CartPage() {
           <h1 className="text-4xl font-accent text-amber-900">Votre Panier</h1>
         </div>
 
-        {/* Store Timing Display */}
+        {/* Store Timing Display - only show when a location is selected */}
+        {selectedLocation && (
         <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-amber-50 rounded-lg border border-green-200">
           <div className="flex items-center justify-center space-x-3">
             <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
@@ -417,6 +527,7 @@ export default function CartPage() {
             </div>
           </div>
         </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Cart Items */}

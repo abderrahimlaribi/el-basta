@@ -35,6 +35,7 @@ CREATE TRIGGER update_orders_updated_at
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
+
 -- Insert some sample data for testing
 INSERT INTO orders (tracking_id, items, delivery_address, total_price, status, estimated_time) VALUES
 ('ELB1001', '[{"id":"cappuccino-1","name":"Cappuccino Classique","quantity":2,"price":475,"category":"Cappuccinos"}]', '15 Rue Didouche Mourad, Alger', 950.00, 'En préparation', '20-30 min'),

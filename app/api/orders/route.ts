@@ -4,7 +4,7 @@ import { createOrder, getAllOrders } from "@/lib/database"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { items, deliveryAddress, totalPrice, customerName, customerPhone, customerNotes, deliveryFee, serviceFees } = body
+    const { items, deliveryAddress, totalPrice, customerName, customerPhone, customerNotes, deliveryFee, serviceFees, locationId, locationName } = body
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "Items are required" }, { status: 400 })
@@ -27,6 +27,8 @@ export async function POST(request: NextRequest) {
       customerNotes,
       deliveryFee,
       serviceFees,
+      locationId,
+      locationName,
     })
 
     return NextResponse.json({

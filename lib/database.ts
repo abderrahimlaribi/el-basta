@@ -13,10 +13,45 @@ export interface Product {
   price: string
   image: string
   category: string
+  categoryId?: string
   createdAt: Date
   updatedAt: Date
-  status?: 'new' | 'promotion' | null
-  discountPrice?: number
+  status: 'new' | 'promotion' | null
+  discountPrice: number | undefined
+  locationPrices?: ProductLocation[]
+  isAvailable: boolean
+}
+
+// Location interface for multiple store locations
+export interface Location {
+  id: string
+  name: string
+  googleMapsUrl: string
+  adminPhone: string
+  isActive: boolean
+  // Optional precise coordinates for distance calculations
+  coordinates?: { lat: number; lng: number }
+  openingHours: {
+    openTime: string // Format: "08:00"
+    closeTime: string // Format: "23:00"
+  }
+  deliverySettings: {
+    isDeliveryAvailable: boolean
+  }
+  createdAt: Date
+  updatedAt: Date
+}
+
+// ProductLocation interface for per-location product management
+export interface ProductLocation {
+  locationId: string
+  price: number
+  isAvailable: boolean
+}
+
+// Enhanced Product interface with location-specific data
+export interface ProductWithLocations extends Product {
+  locationPrices?: ProductLocation[]
 }
 
 // Mock products for fallback
@@ -32,6 +67,7 @@ const mockProducts: Product[] = [
     updatedAt: new Date(),
     status: null,
     discountPrice: undefined,
+    isAvailable: true,
   },
   {
     id: "juice-2",
@@ -44,6 +80,7 @@ const mockProducts: Product[] = [
     updatedAt: new Date(),
     status: null,
     discountPrice: undefined,
+    isAvailable: true,
   },
   {
     id: "juice-3",
@@ -56,6 +93,7 @@ const mockProducts: Product[] = [
     updatedAt: new Date(),
     status: null,
     discountPrice: undefined,
+    isAvailable: true,
   },
   {
     id: "crepe-1",
@@ -68,6 +106,7 @@ const mockProducts: Product[] = [
     updatedAt: new Date(),
     status: null,
     discountPrice: undefined,
+    isAvailable: true,
   },
   {
     id: "crepe-2",
@@ -80,6 +119,7 @@ const mockProducts: Product[] = [
     updatedAt: new Date(),
     status: null,
     discountPrice: undefined,
+    isAvailable: true,
   },
   {
     id: "crepe-3",
@@ -92,6 +132,7 @@ const mockProducts: Product[] = [
     updatedAt: new Date(),
     status: null,
     discountPrice: undefined,
+    isAvailable: true,
   },
   {
     id: "cappuccino-1",
@@ -104,6 +145,7 @@ const mockProducts: Product[] = [
     updatedAt: new Date(),
     status: null,
     discountPrice: undefined,
+    isAvailable: true,
   },
   {
     id: "cappuccino-2",
@@ -116,6 +158,7 @@ const mockProducts: Product[] = [
     updatedAt: new Date(),
     status: null,
     discountPrice: undefined,
+    isAvailable: true,
   },
   {
     id: "cappuccino-3",
@@ -128,6 +171,7 @@ const mockProducts: Product[] = [
     updatedAt: new Date(),
     status: null,
     discountPrice: undefined,
+    isAvailable: true,
   },
   {
     id: "sweet-1",
@@ -140,6 +184,7 @@ const mockProducts: Product[] = [
     updatedAt: new Date(),
     status: null,
     discountPrice: undefined,
+    isAvailable: true,
   },
   {
     id: "sweet-2",
@@ -152,6 +197,7 @@ const mockProducts: Product[] = [
     updatedAt: new Date(),
     status: null,
     discountPrice: undefined,
+    isAvailable: true,
   },
   {
     id: "sweet-3",
@@ -164,6 +210,7 @@ const mockProducts: Product[] = [
     updatedAt: new Date(),
     status: null,
     discountPrice: undefined,
+    isAvailable: true,
   },
 ]
 
@@ -194,6 +241,8 @@ export async function createOrder(orderData: OrderCreate): Promise<{ order: Orde
     customerNotes: orderData.customerNotes,
     deliveryFee: orderData.deliveryFee ?? 0,
     serviceFees: orderData.serviceFees ?? 0,
+    locationId: (orderData as any).locationId,
+    locationName: (orderData as any).locationName,
   }
 
   console.log("📦 Creating order with tracking ID:", trackingId)
@@ -213,6 +262,8 @@ export async function createOrder(orderData: OrderCreate): Promise<{ order: Orde
         customerNotes: orderData.customerNotes,
         deliveryFee: orderData.deliveryFee ?? 0,
         serviceFees: orderData.serviceFees ?? 0,
+        locationId: (orderData as any).locationId,
+        locationName: (orderData as any).locationName,
       }
 
       const docRef = await addDoc(collection(db, "orders"), orderToCreate)
@@ -279,6 +330,8 @@ export async function getOrderByTrackingId(trackingId: string): Promise<Order | 
         customerNotes: data.customerNotes,
         deliveryFee: typeof data.deliveryFee === 'number' ? data.deliveryFee : 0,
         serviceFees: typeof data.serviceFees === 'number' ? data.serviceFees : 0,
+        locationId: data.locationId,
+        locationName: data.locationName,
       }
     } catch (error) {
       console.error("❌ Error getting order from Firebase:", error)
@@ -346,6 +399,8 @@ export async function getAllOrders(date?: string): Promise<Order[]> {
           customerName: data.customerName,
           customerPhone: data.customerPhone,
           customerNotes: data.customerNotes,
+          locationId: data.locationId,
+          locationName: data.locationName,
         };
       });
       console.log(`✅ Retrieved ${orders.length} orders from Firebase`);
@@ -563,6 +618,10 @@ export async function getProducts(): Promise<Product[]> {
           category: data.category,
           createdAt: ensureDate(data.createdAt),
           updatedAt: ensureDate(data.updatedAt),
+          isAvailable: true,
+          status: data.status || null,
+          discountPrice: data.discountPrice,
+          locationPrices: data.locationPrices || [],
         }
       })
 
@@ -586,6 +645,244 @@ export async function getProducts(): Promise<Product[]> {
   return mockProducts
 }
 
+// Location management functions
+export async function getLocations(): Promise<Location[]> {
+  console.log("📍 Fetching all locations...")
+
+  if (isFirebaseConfigured() && db) {
+    try {
+      console.log("🔥 Querying Firebase for all locations...")
+      const q = query(collection(db, "locations"), orderBy("createdAt", "desc"))
+      const querySnapshot = await getDocs(q)
+
+      const locations = querySnapshot.docs.map((docData) => {
+        const data = docData.data()
+        return {
+          id: docData.id,
+          name: data.name,
+          googleMapsUrl: data.googleMapsUrl,
+          adminPhone: data.adminPhone,
+          isActive: data.isActive !== false,
+          coordinates: data.coordinates,
+          openingHours: data.openingHours || { openTime: "08:00", closeTime: "23:00" },
+          deliverySettings: data.deliverySettings
+            ? { isDeliveryAvailable: Boolean(data.deliverySettings.isDeliveryAvailable) }
+            : { isDeliveryAvailable: true },
+          createdAt: ensureDate(data.createdAt),
+          updatedAt: ensureDate(data.updatedAt),
+        }
+      })
+
+      console.log(`✅ Retrieved ${locations.length} locations from Firebase`)
+      return locations
+    } catch (error) {
+      console.error("❌ Error getting locations from Firebase:", error)
+      console.warn("🔄 Falling back to mock locations...")
+    }
+  } else {
+    console.warn("⚠️ Firebase not available - using mock locations")
+  }
+
+  // Fall back to mock locations
+  const mockLocations: Location[] = [
+    {
+      id: "algiers-1",
+      name: "ElBasta Alger Centre",
+      googleMapsUrl: "https://www.google.com/maps?q=ElBasta+Alger+Centre",
+      adminPhone: "+213 770 123 456",
+      isActive: true,
+      coordinates: { lat: 36.7338212, lng: 3.1742928 },
+      openingHours: { openTime: "08:00", closeTime: "23:00" },
+      deliverySettings: { isDeliveryAvailable: true },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
+      id: "oran-1",
+      name: "ElBasta Oran",
+      googleMapsUrl: "https://www.google.com/maps?q=ElBasta+Oran",
+      adminPhone: "+213 770 123 457",
+      isActive: true,
+      coordinates: { lat: 35.6971, lng: -0.6308 },
+      openingHours: { openTime: "08:00", closeTime: "23:00" },
+      deliverySettings: { isDeliveryAvailable: true },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+  ]
+  
+  console.log(`✅ Retrieved ${mockLocations.length} locations from mock data`)
+  return mockLocations
+}
+
+export async function createLocation(locationData: Omit<Location, "id" | "createdAt" | "updatedAt">): Promise<Location> {
+  console.log("📍 Creating new location...")
+
+  const now = new Date()
+  const location: Location = {
+    id: `location_${Date.now()}`,
+    ...locationData,
+    createdAt: now,
+    updatedAt: now,
+  }
+
+  if (isFirebaseConfigured() && db) {
+    try {
+      console.log("🔥 Saving location to Firebase...")
+      const docRef = await addDoc(collection(db, "locations"), {
+        ...locationData,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
+      location.id = docRef.id
+      console.log("✅ Location created successfully in Firebase")
+      return location
+    } catch (error) {
+      console.error("❌ Error creating location in Firebase:", error)
+      console.warn("🔄 Falling back to mock storage...")
+    }
+  } else {
+    console.warn("⚠️ Firebase not available - using mock storage")
+  }
+
+  // Fall back to mock storage
+  console.log("✅ Location created in mock storage")
+  return location
+}
+
+export async function updateLocation(id: string, locationData: Partial<Location>): Promise<void> {
+  console.log(`📍 Updating location ${id}...`)
+
+  if (isFirebaseConfigured() && db) {
+    try {
+      console.log("🔥 Updating location in Firebase...")
+      const locationRef = doc(db, "locations", id)
+      await updateDoc(locationRef, {
+        ...locationData,
+        updatedAt: serverTimestamp(),
+      })
+      console.log("✅ Location updated successfully in Firebase")
+      return
+    } catch (error) {
+      console.error("❌ Error updating location in Firebase:", error)
+      throw error
+    }
+  } else {
+    console.warn("⚠️ Firebase not available - cannot update location")
+    throw new Error("Firebase not available")
+  }
+}
+
+export async function deleteLocation(id: string): Promise<void> {
+  console.log(`📍 Deleting location ${id}...`)
+
+  if (isFirebaseConfigured() && db) {
+    try {
+      console.log("🔥 Deleting location from Firebase...")
+      await deleteDoc(doc(db, "locations", id))
+      console.log("✅ Location deleted successfully from Firebase")
+      return
+    } catch (error) {
+      console.error("❌ Error deleting location from Firebase:", error)
+      throw error
+    }
+  } else {
+    console.warn("⚠️ Firebase not available - cannot delete location")
+    throw new Error("Firebase not available")
+  }
+}
+
+// Get products by location
+export async function getProductsByLocation(locationId: string): Promise<Product[]> {
+  console.log(`🛍️ Fetching products for location ${locationId}...`)
+
+  if (isFirebaseConfigured() && db) {
+    try {
+      console.log("🔥 Querying Firebase for products by location...")
+      const q = query(collection(db, "products"), orderBy("createdAt", "desc"))
+      const querySnapshot = await getDocs(q)
+
+      console.log(`📦 Found ${querySnapshot.docs.length} total products in database`)
+
+      const products = querySnapshot.docs.map((docData) => {
+        const data = docData.data()
+        let image = data.imageUrl || data.image || "/placeholder.jpg"
+        let price = 0
+        let isAvailable = true
+        let status = null
+        let discountPrice = undefined
+        
+        // Check location-specific pricing; include unavailable products as well
+        if (data.locationPrices && Array.isArray(data.locationPrices)) {
+          console.log(`📍 Product "${data.name}" has ${data.locationPrices.length} location prices`)
+          const locationPrice = data.locationPrices.find((lp: any) => lp.locationId === locationId)
+          if (locationPrice) {
+            console.log(`✅ Found pricing for location ${locationId}: ${locationPrice.price} DA, available: ${locationPrice.isAvailable}`)
+            price = Number(locationPrice.price) || 0
+            isAvailable = Boolean(locationPrice.isAvailable)
+            status = locationPrice.status || null
+            discountPrice = typeof locationPrice.discountPrice === 'number' ? locationPrice.discountPrice : undefined
+          } else {
+            // No specific pricing for this location; mark as unavailable but include product with base price if present
+            console.log(`ℹ️ Product "${data.name}" has no pricing for location ${locationId} — marking as unavailable`)
+            isAvailable = false
+            if (typeof data.price === 'number') {
+              price = data.price
+            } else if (typeof data.price === 'string') {
+              const parsed = parseFloat(String(data.price).replace(/[^0-9.]/g, ''))
+              price = isNaN(parsed) ? 0 : parsed
+            } else {
+              price = 0
+            }
+            status = data.status || null
+            discountPrice = typeof data.discountPrice === 'number' ? data.discountPrice : undefined
+          }
+        } else {
+          // No location pricing configured at all; mark as unavailable but include product with base price if present
+          console.log(`ℹ️ Product "${data.name}" has no location pricing at all — marking as unavailable`)
+          isAvailable = false
+          if (typeof data.price === 'number') {
+            price = data.price
+          } else if (typeof data.price === 'string') {
+            const parsed = parseFloat(String(data.price).replace(/[^0-9.]/g, ''))
+            price = isNaN(parsed) ? 0 : parsed
+          } else {
+            price = 0
+          }
+          status = data.status || null
+          discountPrice = typeof data.discountPrice === 'number' ? data.discountPrice : undefined
+        }
+        
+        return {
+          id: docData.id,
+          name: data.name,
+          description: data.description,
+          price: price.toString() + " DA",
+          image,
+          category: data.category || data.categoryId || "Uncategorized",
+          createdAt: ensureDate(data.createdAt),
+          updatedAt: ensureDate(data.updatedAt),
+          isAvailable,
+          status,
+          discountPrice,
+        }
+      }).filter((product): product is Product => product !== null) // Remove null products
+
+      console.log(`✅ Retrieved ${products.length} products for location ${locationId} from Firebase`)
+      return products
+    } catch (error) {
+      console.error("❌ Error getting products by location from Firebase:", error)
+      console.warn("🔄 Falling back to mock products...")
+    }
+  } else {
+    console.warn("⚠️ Firebase not available - using mock products")
+  }
+
+  // Fall back to mock products
+  console.log(`✅ Retrieved ${mockProducts.length} products for location ${locationId} from mock data`)
+  return mockProducts
+}
+
 // CONFIG FIRESTORE SYNC
 export async function saveConfigToFirestore(config: any) {
   if (!isFirebaseConfigured() || !db) throw new Error("Firebase not configured")
@@ -594,7 +891,7 @@ export async function saveConfigToFirestore(config: any) {
 }
 
 export async function fetchConfigFromFirestore() {
-  if (!isFirebaseConfigured() || !db) throw new Error("Firebase not configured")
+  if (!isFirebaseConfigured() || !db) throw new Error("Config not found in Firestore")
   const configRef = doc(collection(db, "config"), "main")
   const snap = await getDoc(configRef)
   if (!snap.exists()) throw new Error("Config not found in Firestore")

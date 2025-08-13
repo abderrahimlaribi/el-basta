@@ -20,5 +20,10 @@ service cloud.firestore {
     match /config/{docId} {
       allow read, write: if true;
     }
+
+    // Allow read and write access to locations collection
+    match /locations/{locationId} {
+      allow read, write: if true;
+    }
   }
 }

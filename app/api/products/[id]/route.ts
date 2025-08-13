@@ -15,34 +15,25 @@ export async function PUT(
     const body = await request.json()
     
     // Extract the fields for logging (destructure from body)
-    const { name, price, categoryId, status, discountPrice } = body
+    const { name, description, categoryId, imageUrl, locationPrices } = body
     
     // Accept any fields for partial update
     const updateData: any = { ...body }
     
-    // Convert price to number if it exists
-    if ('price' in updateData) {
-      updateData.price = Number(updateData.price)
+    // Validate required fields
+    if (!name || !description || !categoryId || !imageUrl) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      )
     }
-    
-    // Sanitize discountPrice
-    if ('discountPrice' in updateData) {
-      if (updateData.discountPrice === '' || isNaN(Number(updateData.discountPrice))) {
-        delete updateData.discountPrice
-      } else {
-        updateData.discountPrice = Number(updateData.discountPrice)
-      }
+
+    if (!locationPrices || !Array.isArray(locationPrices) || locationPrices.length === 0) {
+      return NextResponse.json(
+        { error: "At least one location price is required" },
+        { status: 400 }
+      )
     }
-    
-    // Sanitize status
-    if ('status' in updateData) {
-      if (updateData.status === '' || updateData.status === 'none') {
-        updateData.status = null
-      }
-    }
-    
-    // Ensure isAvailable is set
-    if (!('isAvailable' in updateData)) updateData.isAvailable = true
     
     // Remove empty string fields (except for fields that can be empty)
     Object.keys(updateData).forEach(key => {
@@ -51,11 +42,7 @@ export async function PUT(
       }
     })
     
-    // Ensure status and discountPrice are set to null if not provided
-    if (!('status' in updateData)) updateData.status = null
-    if (!('discountPrice' in updateData)) updateData.discountPrice = null
-    
-    console.log(`🔄 Updating product ${id}:`, { name, price, categoryId, status, discountPrice })
+    console.log(`🔄 Updating product ${id}:`, { name, categoryId, locationPrices: locationPrices.length })
     
     if (isFirebaseConfigured() && db) {
       try {
@@ -73,10 +60,8 @@ export async function PUT(
           updatedAt: serverTimestamp() // Use serverTimestamp for Firebase
         }
         
-        // Ensure status and discountPrice are always present
-        if (!('status' in mergedData)) mergedData.status = null
-        if (!('discountPrice' in mergedData)) mergedData.discountPrice = null
-        if (!('isAvailable' in mergedData)) mergedData.isAvailable = true
+        // Ensure locationPrices is always present
+        if (!('locationPrices' in mergedData)) mergedData.locationPrices = []
         
         await updateDoc(productRef, mergedData)
         
