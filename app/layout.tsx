@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Great_Vibes, Nunito } from "next/font/google"
 import Script from 'next/script'
 import { GA_TRACKING_ID } from '@/lib/gtag'
+import { getLocations } from '@/lib/database'
 import "./globals.css"
 
 const greatVibes = Great_Vibes({
@@ -91,11 +92,12 @@ export const metadata: Metadata = {
   category: 'food',
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const locations = await getLocations()
   return (
     <html lang="fr" className={`${greatVibes.variable} ${nunito.variable}`}>
       <head>
@@ -105,6 +107,14 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        {/* Preload locations for instant rendering on homepage */}
+        <Script
+          id="preloaded-locations"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `window.__INITIAL_LOCATIONS__ = ${JSON.stringify(locations)};`,
+          }}
+        />
         {/* Google Analytics */}
         <Script
           strategy="afterInteractive"

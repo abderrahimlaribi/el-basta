@@ -18,6 +18,14 @@ export function LocationSelector({ onLocationSelect, selectedLocation }: Locatio
   const [showLocationModal, setShowLocationModal] = useState(false)
 
   useEffect(() => {
+    // Prefer server-injected locations for instant render
+    const globalAny = globalThis as any
+    const preloaded: Location[] | undefined = globalAny.__INITIAL_LOCATIONS__
+    if (Array.isArray(preloaded) && preloaded.length > 0) {
+      setLocations(preloaded)
+      setLoading(false)
+      return
+    }
     fetchLocations()
   }, [])
 
