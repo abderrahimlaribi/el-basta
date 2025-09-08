@@ -47,6 +47,7 @@ export default function CartPage() {
   const [serviceFees, setServiceFees] = useState(0);
   const [openTime, setOpenTime] = useState('08:00');
   const [closeTime, setCloseTime] = useState('23:00');
+  const [isFar, setIsFar] = useState(false);
   const [storeClosed, setStoreClosed] = useState(false);
   const selectedLocation = useCartStore((state) => state.selectedLocation)
   
@@ -246,6 +247,13 @@ export default function CartPage() {
           } else {
             setDeliveryFee(0);
             setLocationError("La distance dépasse notre zone de livraison.");
+            setIsFar(true);
+            setDeliveryMethod('surplace');
+            toast({
+              title: 'Livraison',
+              description: `La distance dépasse notre zone de livraison.`,
+              duration: Infinity,
+            });
           }
         }
       },
@@ -273,6 +281,7 @@ export default function CartPage() {
       } else {
         setDeliveryFee(0);
         setLocationError("La distance dépasse notre zone de livraison.");
+        setIsFar(true);
         console.log("No interval matched. Delivery not available.");
       }
     } else if (deliveryMethod === "surplace") {
@@ -678,8 +687,8 @@ export default function CartPage() {
                             name="deliveryMethod"
                             value="livraison"
                             checked={deliveryMethod === 'livraison'}
-                            onChange={() => isDeliveryAvailable && handleDeliveryMethodChange('livraison')}
-                            disabled={!isDeliveryAvailable}
+                            onChange={() => isDeliveryAvailable && !isFar && handleDeliveryMethodChange('livraison')}
+                            disabled={!isDeliveryAvailable || isFar}
                             className="sr-only"
                           />
                           <div className={`min-h-[7rem] w-full p-4 rounded-xl border-2 transition-all duration-200 group-hover:shadow-lg flex flex-col justify-center
@@ -700,6 +709,9 @@ export default function CartPage() {
                                 <div className="text-amber-700 font-body text-sm mt-1">Livraison directe chez vous</div>
                                 {!isDeliveryAvailable && (
                                   <div className="text-red-600 text-xs font-body mt-1 font-semibold">Le service de livraison est actuellement indisponible. Veuillez choisir 'Commande sur place'.</div>
+                                )}
+                                {isFar && (
+                                  <div className="text-red-600 text-xs font-body mt-1 font-semibold">La distance dépasse notre zone de livraison.</div>
                                 )}
                               </div>
                               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0
