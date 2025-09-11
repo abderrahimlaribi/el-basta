@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getLocations, createLocation } from '@/lib/database'
 
+// Add your Vercel webhook URL as an environment variable
+const VERCEL_DEPLOY_HOOK = process.env.VERCEL_DEPLOY_HOOK!
+
 // GET /api/locations - Get all locations
 export async function GET() {
   try {
@@ -48,6 +51,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Create the location in your database
     const location = await createLocation({
       name,
       googleMapsUrl,
@@ -57,6 +61,14 @@ export async function POST(request: NextRequest) {
       deliverySettings,
     })
 
+    // Trigger Vercel redeploy
+    try {
+      await fetch(VERCEL_DEPLOY_HOOK, { method: 'POST' })
+      console.log('✅ Vercel redeploy triggered successfully')
+    } catch (err) {
+      console.error('❌ Failed to trigger Vercel redeploy:', err)
+    }
+
     return NextResponse.json({ location }, { status: 201 })
   } catch (error) {
     console.error('Error creating location:', error)
@@ -65,4 +77,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-} 
+}

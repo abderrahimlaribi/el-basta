@@ -223,7 +223,23 @@ export function LocationManager({ onLocationsChange }: LocationManagerProps) {
         <h2 className="text-2xl font-bold">Gestion des Emplacements</h2>
         <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogTrigger asChild>
-            <Button onClick={() => setShowForm(true)}>
+            <Button onClick={() => {
+              setFormData({
+                name: "",
+                googleMapsUrl: "",
+                adminPhone: "",
+                isActive: true,
+                openingHours: {
+                  openTime: "08:00",
+                  closeTime: "23:00",
+                },
+                deliverySettings: {
+                  isDeliveryAvailable: true,
+                },
+              })
+              setShowForm(true)
+
+            }}>
               <Plus className="h-4 w-4 mr-2" />
               Ajouter un emplacement
             </Button>

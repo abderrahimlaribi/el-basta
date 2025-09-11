@@ -9,25 +9,33 @@ export default function AdminAuthPage() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
-  const ADMIN_PASSWORD = "ElBasta2024!"; // Plaintext for testing
-
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setLoading(true)
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+  
     try {
-      if (password === ADMIN_PASSWORD) {
-        document.cookie = "admin-session=authenticated; path=/; max-age=3600; secure; samesite=strict"
-        router.replace("/admin")
+      const response = await fetch("/api/admin-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+  
+      const data = await response.json();
+  
+      if (data.success) {
+        document.cookie = "admin-session=authenticated; path=/; max-age=3600; secure; samesite=strict";
+        router.replace("/admin");
       } else {
-        setError("Access denied: Admins only.")
+        setError("Access denied: Admins only.");
       }
     } catch (err) {
-      setError("An error occurred. Please try again.")
+      setError("An error occurred. Please try again.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
+  
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
